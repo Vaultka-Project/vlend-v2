@@ -70,7 +70,8 @@ async fn main() -> Result<()> {
     )
     .await
     .into_iter()
-    .collect::<Result<Vec<_>>>()?;
+    .filter_map(|bank| bank.ok())
+    .collect::<Vec<_>>();
 
     let snapshot_json = serde_json::to_string(&snapshot).unwrap();
 
@@ -242,9 +243,9 @@ async fn fetch_price_from_birdeye(token: &Pubkey) -> Result<I80F48> {
         .as_object()
         .unwrap()
         .get("data")
-        .unwrap()
+        .ok_or(anyhow::anyhow!("No data in response"))?
         .get("value")
-        .unwrap()
+        .ok_or(anyhow::anyhow!("No value in response"))?
         .as_f64();
 
     Ok(I80F48::from_num(price.unwrap()))

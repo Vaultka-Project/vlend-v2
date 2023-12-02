@@ -263,10 +263,11 @@ pub fn group_configure(config: Config, profile: Profile, admin: Option<Pubkey>) 
     }
 
     let mut signing_keypairs = config.get_signers(false);
-    let mut configure_marginfi_group_ixs_builder = config
-        .mfi_program
-        .request()
-        .signer(*signing_keypairs.first().unwrap());
+    let mut configure_marginfi_group_ixs_builder = config.mfi_program.request();
+
+    if let Some(signer) = signing_keypairs.first() {
+        configure_marginfi_group_ixs_builder = configure_marginfi_group_ixs_builder.signer(*signer)
+    }
 
     let configure_marginfi_group_ixs = configure_marginfi_group_ixs_builder
         .accounts(marginfi::accounts::MarginfiGroupConfigure {

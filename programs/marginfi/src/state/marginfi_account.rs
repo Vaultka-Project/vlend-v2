@@ -137,6 +137,53 @@ impl<'a, 'b> BankAccountWithPriceFeed<'a, 'b> {
             .filter(|balance| balance.active)
             .collect::<Vec<_>>();
 
+        check!(remaining_ais.len() >= 2 * active_balances.len(), {
+            msg!(
+                "Expecting at least {} remaining accounts, got {}",
+                active_balances.len() * 2,
+                remaining_ais.len()
+            );
+            MarginfiError::MissingPythOrBankAccount
+        });
+
+        let current_timestamp = Clock::get()?.unix_timestamp;
+
+        let mut bank_accounts_with_feed = vec![];
+
+        for balance in &active_balances {
+            let bank_ai_index = remaining_ais
+                .iter()
+                .position(|ai| ai.key.eq(&balance.bank_pk))
+                .expect(&format!(
+                    "Health accounts not found for bank: {:?}",
+                    balance.bank_pk
+                ));
+            let oracle_ai_idx = bank_ai_index + 1;
+
+            let bank_ai = remaining_ais.get(bank_ai_index).unwrap();
+
+            let price_adapter = {
+                let oracle_ais = &remaining_ais[oracle_ai_idx..oracle_ai_idx + 1];
+                let bank_al = AccountLoader::<Bank>::try_from(bank_ai)?;
+                let bank = bank_al.load()?;
+
+                Box::new(OraclePriceFeedAdapter::try_from_bank_config(
+                    &bank.config,
+                    oracle_ais,
+                    current_timestamp,
+                    MAX_PRICE_AGE_SEC,
+                ))
+            };
+
+            bank_accounts_with_feed.push(BankAccountWithPriceFeed {
+                bank: bank_ai.clone(),
+                price_feed: price_adapter,
+                balance,
+            });
+        }
+
+        Ok(bank_accounts_with_feed)
+    }
         msg!("Expecting {} remaining accounts", active_balances.len() * 2);
         msg!("Got {} remaining accounts", remaining_ais.len());
 

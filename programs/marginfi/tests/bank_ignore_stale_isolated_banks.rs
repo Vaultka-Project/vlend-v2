@@ -1,7 +1,7 @@
 use fixtures::{
-    assert_custom_error, native,
+    assert_custom_error,
     test::{
-        BankMint, TestFixture, TestSettings, PYTH_SOL_EQUIVALENT_FEED, PYTH_SOL_FEED,
+        BankMint, TestFixture, TestSettings, PYTH_SOL_FEED,
         PYTH_USDC_FEED,
     },
 };

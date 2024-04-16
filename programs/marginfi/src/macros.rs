@@ -4,6 +4,7 @@
 macro_rules! check {
     ($cond:expr, $err:expr) => {
         if !($cond) {
+            dbg!($cond);
             let error_code: $crate::errors::MarginfiError = $err;
             #[cfg(not(feature = "test-bpf"))]
             anchor_lang::prelude::msg!(

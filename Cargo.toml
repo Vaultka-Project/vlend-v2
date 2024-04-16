@@ -4,16 +4,16 @@ members = ["programs/*", "clients/rust/*", "tools/*", "observability/indexer"]
 exclude = ["programs/brick"]
 
 [workspace.dependencies]
-solana-cli-output = "1.16.23"
-solana-client = "1.16.23"
-solana-sdk = "1.16.23"
-solana-logger = "1.16.23"
-solana-program = "1.16.23"
-solana-program-test = "1.16.23"
-solana-account-decoder = "1.16.23"
-solana-measure = "1.16.23"
-solana-metrics = "1.16.23"
-solana-transaction-status = "1.16.23"
+solana-cli-output = "1.16"
+solana-client = "1.16"
+solana-sdk = "1.16"
+solana-logger = "1.16"
+solana-program = "1.16"
+solana-program-test = "1.16"
+solana-account-decoder = "1.16"
+solana-measure = "1.16"
+solana-metrics = "1.16"
+solana-transaction-status = "1.16"
 spl-token = "4.0.0"
 spl-associated-token-account = "2.2.0"
 

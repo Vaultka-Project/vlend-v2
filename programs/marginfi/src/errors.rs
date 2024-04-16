@@ -15,9 +15,9 @@ pub enum MarginfiError {
     InvalidTransfer,
     #[msg("Missing Pyth or Bank account")] // 6005
     MissingPythOrBankAccount,
-    #[msg("Missing Pyth account")] // 6006
+    #[msg("Missing Oracle account")] // 6006
     MissingPythAccount,
-    #[msg("Invalid Pyth account")] // 6007
+    #[msg("Invalid Oracle account")] // 6007
     InvalidOracleAccount,
     #[msg("Missing Bank account")] // 6008
     MissingBankAccount,

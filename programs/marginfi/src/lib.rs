@@ -27,7 +27,6 @@ cfg_if::cfg_if! {
 
 #[program]
 pub mod marginfi {
-
     use super::*;
 
     pub fn marginfi_group_initialize(ctx: Context<MarginfiGroupInitialize>) -> MarginfiResult {
@@ -258,6 +257,40 @@ pub mod marginfi {
 
     pub fn marginfi_account_close(ctx: Context<MarginfiAccountClose>) -> MarginfiResult {
         marginfi_account::close_account(ctx)
+    }
+
+    pub fn create_new_liquid_insurance_fund(
+        ctx: Context<CreateNewLiquidInsuranceFund>,
+        params: InitMintParams,
+        min_withdraw_period: i64,
+        init_number_of_shares: Option<u64>,
+    ) -> MarginfiResult {
+        marginfi_group::create_new_liquid_insurance_fund(
+            ctx,
+            params,
+            min_withdraw_period,
+            init_number_of_shares,
+        )
+    }
+
+    pub fn deposit_into_liquid_insurance_fund(
+        ctx: Context<DepositIntoLiquidInsuranceFund>,
+        amount: u64,
+    ) -> MarginfiResult {
+        marginfi_group::deposit_into_liquid_insurance_fund(ctx, amount)
+    }
+
+    pub fn create_withdraw_request_from_liquid_token_fund(
+        ctx: Context<WithdrawRequestLiquidInsuranceFund>,
+        amount: u64,
+    ) -> MarginfiResult {
+        marginfi_group::create_withdraw_request_from_liquid_token_fund(ctx, amount)
+    }
+
+    pub fn settle_withdraw_claim_in_liquid_insurance_fund(
+        ctx: Context<SettleWithdrawClaimInLiquidInsuranceFund>,
+    ) -> MarginfiResult {
+        marginfi_group::settle_withdraw_claim_in_liquid_insurance_fund(ctx)
     }
 }
 

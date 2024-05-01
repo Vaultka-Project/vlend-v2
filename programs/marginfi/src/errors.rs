@@ -102,6 +102,8 @@ pub enum MarginfiError {
     IllegalAction,
     #[msg("Token22 Banks require mint account as first remaining account")] // 6047
     T22MintRequired,
+    #[msg("InvalidWithdrawal")] // 6048
+    InvalidWithdrawal,
 }
 
 impl From<MarginfiError> for ProgramError {

@@ -6,6 +6,11 @@ use anchor_lang::{prelude::*, solana_program::system_program, InstructionData};
 
 use anyhow::Result;
 use marginfi::{
+    constants::{
+        LIQUID_INSURANCE_MINT_AUTHORITY_SEED, LIQUID_INSURANCE_MINT_METADATA_SEED,
+        LIQUID_INSURANCE_MINT_SEED,
+    },
+    instructions::InitMintParams,
     prelude::MarginfiGroup,
     state::{
         liquid_insurance_fund::LiquidInsuranceFund,

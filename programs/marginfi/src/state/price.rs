@@ -404,7 +404,7 @@ impl LiteAggregatorAccountData {
 }
 
 #[inline(always)]
-fn pyth_price_components_to_i80f48(price: I80F48, exponent: i32) -> MarginfiResult<I80F48> {
+pub fn pyth_price_components_to_i80f48(price: I80F48, exponent: i32) -> MarginfiResult<I80F48> {
     let scaling_factor = EXP_10_I80F48[exponent.unsigned_abs() as usize];
 
     let price = if exponent == 0 {
@@ -431,7 +431,7 @@ fn load_pyth_price_feed(ai: &AccountInfo) -> MarginfiResult<PriceFeed> {
 }
 
 #[inline(always)]
-fn swithcboard_decimal_to_i80f48(decimal: SwitchboardDecimal) -> Option<I80F48> {
+pub fn swithcboard_decimal_to_i80f48(decimal: SwitchboardDecimal) -> Option<I80F48> {
     let decimal = fit_scale_switchboard_decimal(decimal, MAX_SCALE)?;
 
     I80F48::from_num(decimal.mantissa).checked_div(EXP_10_I80F48[decimal.scale as usize])

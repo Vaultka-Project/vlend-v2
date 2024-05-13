@@ -60,6 +60,7 @@ use {
 use marginfi::state::price::{OraclePriceFeedAdapter, PriceAdapter};
 use marginfi::{constants::ZERO_AMOUNT_THRESHOLD, utils::NumTraitsWithTolerance};
 use solana_client::rpc_client::RpcClient;
+use solana_sdk::pubkey;
 
 #[cfg(feature = "admin")]
 use {
@@ -159,6 +160,12 @@ Config:
     Type: {:?}
     Keys: {:#?}
     Max Age: {:#?}s
+Fees:
+    Protocol: {:?} {}
+    Insurance: {:?} {}
+Unclaimed
+    Fees: {:?}
+    Insurance: {:?}
 Emissions:
   Flags: 0b{:b}
   Rate: {:?}
@@ -197,8 +204,18 @@ Last Update: {:?}h ago ({})
         bank.config.oracle_setup,
         bank.config.oracle_keys,
         bank.config.get_oracle_max_age(),
+        I80F48::from(bank.collected_group_fees_outstanding)
+            / EXP_10_I80F48[bank.mint_decimals as usize],
+        bank.mint,
+        I80F48::from(bank.collected_insurance_fees_outstanding)
+            / EXP_10_I80F48[bank.mint_decimals as usize],
+        bank.mint,
         bank.flags,
         I80F48::from(bank.emissions_rate),
+        I80F48::from(bank.collected_group_fees_outstanding)
+            / EXP_10_I80F48[bank.mint_decimals as usize],
+        I80F48::from(bank.collected_insurance_fees_outstanding)
+            / EXP_10_I80F48[bank.mint_decimals as usize],
         bank.emissions_mint,
         I80F48::from(bank.emissions_remaining),
         I80F48::from(bank.collected_group_fees_outstanding)
@@ -1021,9 +1038,9 @@ fn load_all_banks(config: &Config, marginfi_group: Option<Pubkey>) -> Result<Vec
     };
 
     let mut clock = config.mfi_program.rpc().get_account(&sysvar::clock::ID)?;
-    let clock = Clock::from_account_info(&(&sysvar::clock::ID, &mut clock).into_account_info())?;
 
     let mut banks_with_addresses = config.mfi_program.accounts::<Bank>(filters)?;
+    let clock = Clock::from_account_info(&(&sysvar::clock::ID, &mut clock).into_account_info())?;
 
     banks_with_addresses.iter_mut().for_each(|(_, bank)| {
         bank.accrue_interest(clock.unix_timestamp).unwrap();
@@ -1100,7 +1117,7 @@ Prince:
 pub fn show_oracle_ages(config: Config, only_stale: bool) -> Result<()> {
     use marginfi::state::price::OracleSetup;
     use pyth_sdk_solana::state::load_price_account;
-    use solana_sdk::{account::ReadableAccount, pubkey};
+    use solana_sdk::account::ReadableAccount;
     use switchboard_v2::AggregatorAccountData;
 
     let banks = config
@@ -1710,9 +1727,10 @@ pub fn print_account(
     default: bool,
 ) -> Result<()> {
     println!(
-        "Address: {} {}",
+        "Address: {} {} (authority: {})",
         address,
-        if default { "(default)" } else { "" }
+        if default { "(default)" } else { "" },
+        marginfi_account.authority
     );
     println!("Lending Account Balances:");
     marginfi_account

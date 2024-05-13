@@ -145,8 +145,13 @@ pub enum GroupCommand {
     },
     #[cfg(feature = "admin")]
     UpdateLookupTable {
-        #[clap(short = 't', long)]
-        existing_token_lookup_tables: Vec<Pubkey>,
+        #[clap(long)]
+        current: Vec<Pubkey>,
+    },
+    #[cfg(feature = "admin")]
+    CheckLookupTable {
+        #[clap(long)]
+        current: Vec<Pubkey>,
     },
 }
 
@@ -505,6 +510,7 @@ fn group(subcmd: GroupCommand, global_options: &GlobalOptions) -> Result<()> {
             GroupCommand::Get { marginfi_group: _ } => (),
             GroupCommand::GetAll {} => (),
             #[cfg(feature = "admin")]
+            GroupCommand::CheckLookupTable { current: _ } => (),
             _ => get_consent(&subcmd, &profile)?,
         }
     }
@@ -570,13 +576,13 @@ fn group(subcmd: GroupCommand, global_options: &GlobalOptions) -> Result<()> {
             processor::handle_bankruptcy_for_accounts(&config, &profile, accounts)
         }
         #[cfg(feature = "admin")]
-        GroupCommand::UpdateLookupTable {
-            existing_token_lookup_tables,
-        } => processor::group::process_update_lookup_tables(
-            &config,
-            &profile,
-            existing_token_lookup_tables,
-        ),
+        GroupCommand::UpdateLookupTable { current } => {
+            processor::group::process_update_lookup_tables(&config, &profile, current)
+        }
+        #[cfg(feature = "admin")]
+        GroupCommand::CheckLookupTable { current } => {
+            processor::group::process_check_lookup_tables(&config, &profile, current)
+        }
     }
 }
 

@@ -36,7 +36,7 @@ const JUP_EVENT_AUTHORITY: Pubkey = pubkey!("D8cy77BBepLMngZx6ZukaTff5hCt1HrWyKk
 const PYTH_ID: Pubkey = pubkey!("FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH");
 const JUP_AUTHORITY_SEED: &[u8] = b"authority";
 const JUP_PROGRAM_ID: Pubkey = pubkey!("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4");
-const JUP_AUTHORITY_INDEX: u8 = 7;
+const JUP_AUTHORITY_INDEX: u8 = 5;
 
 fn get_missing_keys(
     marginfi_group: &Pubkey,
@@ -278,7 +278,7 @@ pub fn process_update_lookup_tables(
         &existing_lookup_tables,
     )?;
 
-    info!("Missing {} keys", missing_keys.len());
+    println!("Missing {} keys", missing_keys.len());
 
     // Extend exsiting lookup tables if possible
     for (address, table) in existing_lookup_tables.iter() {

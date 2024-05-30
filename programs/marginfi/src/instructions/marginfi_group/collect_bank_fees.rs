@@ -297,6 +297,14 @@ pub fn lending_pool_withdraw_insurance(
         ctx.remaining_accounts,
     )?;
 
+    // Update bank's liquid insurance fund shares to reflect new balance.
+    // Note: If no liquid insurance fund address exists, no update takes place.
+    // The value of LIF shares are discounted by same margin as the amount taken from the insurance fund.
+    if let Some(lif) = &ctx.accounts.liquid_insurance_fund {
+        let mut lif = lif.load_mut()?;
+        lif.haircut_shares(amount)?;
+    }
+
     Ok(())
 }
 

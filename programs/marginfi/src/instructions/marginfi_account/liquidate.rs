@@ -449,7 +449,7 @@ pub struct LendingAccountLiquidate<'info> {
         ],
         bump = liab_bank.load()?.insurance_vault_bump
     )]
-    pub bank_insurance_vault: Account<'info, TokenAccount>,
+    pub bank_insurance_vault: AccountInfo<'info>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }

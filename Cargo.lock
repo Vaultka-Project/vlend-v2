@@ -1179,24 +1179,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cbindgen"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "104ca409bbff8293739438c71820a2606111b5f8f81835536dc673dfd807369e"
-dependencies = [
- "clap 2.34.0",
- "heck 0.3.3",
- "log",
- "proc-macro2 1.0.79",
- "quote 1.0.35",
- "serde",
- "serde_json",
- "syn 1.0.109",
- "tempfile",
- "toml",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4162,15 +4144,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "remove_dir_all"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfc5b3ce5d5ea144bb04ebd093a9e14e9765bcfec866aecda9b6dec43b3d1e24"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "reqwest"
 version = "0.11.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6330,20 +6303,6 @@ dependencies = [
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
  "spl-type-length-value 0.3.0",
-]
-
-[[package]]
-name = "spl-token"
-version = "1.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e8bee8b59279b46d0627490b544c3bc38e440ff4da9851a34a26ab0a24bfe7d"
-dependencies = [
- "cbindgen",
- "num-derive 0.3.3",
- "num-traits",
- "remove_dir_all",
- "solana-sdk",
- "thiserror",
 ]
 
 [[package]]

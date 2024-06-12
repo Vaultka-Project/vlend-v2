@@ -285,9 +285,9 @@ pub fn lending_pool_withdraw_insurance(
     bank.withdraw_spl_transfer(
         tokens,
         insurance_vault.to_account_info(),
-        dst_token_account.to_account_info(),
+        admin_token_account.to_account_info(),
         insurance_vault_authority.to_account_info(),
-        maybe_bank_mint.as_ref(),
+        maybe_bank_mint,
         token_program.to_account_info(),
         bank_signer!(
             BankVaultType::Insurance,
@@ -297,13 +297,46 @@ pub fn lending_pool_withdraw_insurance(
         ctx.remaining_accounts,
     )?;
 
-    // Update bank's liquid insurance fund shares to reflect new balance.
-    // Note: If no liquid insurance fund address exists, no update takes place.
-    // The value of LIF shares are discounted by same margin as the amount taken from the insurance fund.
-    if let Some(lif) = &ctx.accounts.liquid_insurance_fund {
-        let mut lif = lif.load_mut()?;
-        lif.haircut_shares(amount)?;
-    }
+    Ok(())
+}
+
+pub fn lending_pool_deposit_insurance(
+    ctx: Context<LendingPoolAdminDepositWithdrawInsurance>,
+    amount: u64,
+) -> MarginfiResult {
+    let LendingPoolAdminDepositWithdrawInsurance {
+        bank: bank_loader,
+        insurance_vault,
+        admin_token_account,
+        token_program,
+        liquid_insurance_fund,
+        admin,
+        ..
+    } = ctx.accounts;
+
+    let bank = bank_loader.load()?;
+
+    // If there exist a liquid insurance fund, need to update shares
+    LiquidInsuranceFund::maybe_process_admin_deposit(
+        liquid_insurance_fund,
+        insurance_vault.amount,
+        amount,
+    )?;
+
+    bank.withdraw_spl_transfer(
+        amount,
+        Transfer {
+            from: admin_token_account.to_account_info(),
+            to: insurance_vault.to_account_info(),
+            authority: admin.to_account_info(),
+        },
+        token_program.to_account_info(),
+        bank_signer!(
+            BankVaultType::Insurance,
+            bank_loader.key(),
+            bank.insurance_vault_authority_bump
+        ),
+    )?;
 
     Ok(())
 }

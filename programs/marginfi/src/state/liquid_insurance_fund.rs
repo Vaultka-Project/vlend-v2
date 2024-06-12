@@ -426,7 +426,6 @@ impl LiquidInsuranceFundAccount {
         if new_shares == I80F48::ZERO {
             deposit.free();
         }
-        deposit.shares = (deposit_shares - requested_shares).into();
 
         // 3) Initialize withdrawal in empty slot
         let withdrawal_slot = self

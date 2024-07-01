@@ -99,6 +99,8 @@ pub enum MarginfiError {
     InsuranceFundAccountBalanceSlotsFull,
     #[msg("Insurance fund account withdraw slots are full")] // 6048
     InsuranceFundAccountWithdrawSlotsFull,
+    #[msg("Invalid account authority")] // 6046
+    IllegalAction,
 }
 
 impl From<MarginfiError> for ProgramError {

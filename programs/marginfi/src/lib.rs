@@ -253,6 +253,10 @@ pub mod marginfi {
     ) -> MarginfiResult {
         liquid_insurance_fund::settle_withdraw_claim_in_liquid_insurance_fund(ctx)
     }
+
+    pub fn marginfi_account_close(ctx: Context<MarginfiAccountClose>) -> MarginfiResult {
+        marginfi_account::close_account(ctx)
+    }
 }
 
 #[cfg(not(feature = "no-entrypoint"))]

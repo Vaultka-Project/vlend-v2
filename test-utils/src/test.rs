@@ -309,8 +309,6 @@ impl TestFixture {
     pub async fn new(test_settings: Option<TestSettings>) -> TestFixture {
         let mut program = ProgramTest::new("marginfi", marginfi::ID, processor!(marginfi::entry));
 
-        program.prefer_bpf(true);
-
         #[cfg(feature = "lip")]
         program.add_program(
             "liquidity_incentive_program",

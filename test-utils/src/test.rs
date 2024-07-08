@@ -365,6 +365,7 @@ impl TestFixture {
         program.prefer_bpf(true);
         program.add_program("marginfi", marginfi::ID, None);
         program.add_program("test_transfer_hook", TEST_HOOK_ID, None);
+        program.add_program("deser_check", deser_check::ID, None);
         #[cfg(feature = "lip")]
         program.add_program(
             "liquidity_incentive_program",

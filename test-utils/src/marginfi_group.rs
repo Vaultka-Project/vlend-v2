@@ -117,6 +117,27 @@ impl MarginfiGroupFixture {
 
         println!("tx: {:?}", tx.message.instructions.len());
         println!("txdata: {:?}", tx.message.instructions[0].data);
+        let check_ix = Instruction {
+            program_id: deser_check::id(),
+            accounts: vec![],
+            data: marginfi::instruction::LendingPoolAddBank {
+                bank_config: bank_config.into(),
+            }
+            .data(),
+        };
+
+        let check_tx = Transaction::new_signed_with_payer(
+            &[check_ix],
+            Some(&self.ctx.borrow().payer.pubkey().clone()),
+            &[&self.ctx.borrow().payer],
+            self.ctx.borrow().last_blockhash,
+        );
+
+        self.ctx
+            .borrow_mut()
+            .banks_client
+            .process_transaction(check_tx)
+            .await?;
 
         self.ctx
             .borrow_mut()

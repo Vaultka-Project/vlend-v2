@@ -1,6 +1,12 @@
 use super::marginfi_account::MarginfiAccountFixture;
 use crate::{
-    bank::BankFixture, marginfi_group::*, native, spl::*, transfer_hook::TEST_HOOK_ID, utils::*,
+    bank::BankFixture,
+    marginfi_group::*,
+    native,
+    spl::*,
+    // spl2::{MintFixture2, SupportedExtension2},
+    transfer_hook::TEST_HOOK_ID,
+    utils::*,
 };
 
 use anchor_lang::prelude::*;
@@ -753,3 +759,417 @@ impl TestFixture {
         get_max_deposit_amount_pre_fee(collateral_amount)
     }
 }
+
+// pub struct TestContext {
+//     pub svm: LiteSVM,
+//     pub payer: Keypair,
+// }
+
+// pub struct TestFixture2 {
+//     pub svm: Rc<RefCell<TestContext>>,
+//     pub marginfi_group: MarginfiGroupFixture,
+//     pub banks: HashMap<BankMint, BankFixture>,
+// }
+
+// impl TestFixture2 {
+//     pub async fn new(test_settings: Option<TestSettings>) -> Self {
+//         Self::new_with_t22_extension(test_settings, &[]).await
+//     }
+
+//     pub async fn new_with_t22_extension(
+//         test_settings: Option<TestSettings>,
+//         extensions: &[SupportedExtension2],
+//     ) -> Self {
+//         let mut svm = LiteSVM::new()
+//             .with_sysvars()
+//             .with_builtins()
+//             .with_spl_programs();
+
+//         let mut so_path = PathBuf::from(std::env::var("SBF_OUT_DIR").unwrap());
+//         so_path.push("marginfi.so");
+//         svm.add_program_from_file(marginfi::ID, &so_path).unwrap();
+
+//         let mut so_path = PathBuf::from(std::env::var("SBF_OUT_DIR").unwrap());
+//         so_path.push("test_transfer_hook.so");
+//         svm.add_program_from_file(TEST_HOOK_ID, so_path);
+
+//         #[cfg(feature = "lip")]
+//         {
+//             let mut so_path = PathBuf::from(std::env::var("SBF_OUT_DIR").unwrap());
+//             so_path.push("liquidity_incentive_program.so");
+//             svm.add_program_from_file(liquidity_incentive_program::ID, so_path);
+//         }
+
+//         let usdc_keypair = Keypair::new();
+//         let pyusd_keypair = Keypair::new();
+//         let sol_keypair = Keypair::new();
+//         let sol_equivalent_keypair = Keypair::new();
+//         let mnde_keypair = Keypair::new();
+//         let usdc_t22_keypair = Keypair::new();
+//         let t22_with_fee_keypair = Keypair::new();
+
+//         svm.set_account(
+//             PYTH_USDC_FEED,
+//             create_pyth_price_account(usdc_keypair.pubkey(), 1.0, USDC_MINT_DECIMALS.into(), None),
+//         );
+//         svm.set_account(
+//             PYTH_PYUSD_FEED,
+//             create_pyth_price_account(
+//                 pyusd_keypair.pubkey(),
+//                 1.0,
+//                 PYUSD_MINT_DECIMALS.into(),
+//                 None,
+//             ),
+//         );
+//         svm.set_account(
+//             PYTH_T22_WITH_FEE_FEED,
+//             create_pyth_price_account(
+//                 t22_with_fee_keypair.pubkey(),
+//                 0.5,
+//                 T22_WITH_FEE_MINT_DECIMALS.into(),
+//                 None,
+//             ),
+//         );
+//         svm.set_account(
+//             PYTH_SOL_FEED,
+//             create_pyth_price_account(sol_keypair.pubkey(), 10.0, SOL_MINT_DECIMALS.into(), None),
+//         );
+//         svm.set_account(
+//             PYTH_SOL_EQUIVALENT_FEED,
+//             create_pyth_price_account(
+//                 sol_equivalent_keypair.pubkey(),
+//                 10.0,
+//                 SOL_MINT_DECIMALS.into(),
+//                 None,
+//             ),
+//         );
+//         svm.set_account(
+//             PYTH_MNDE_FEED,
+//             create_pyth_price_account(mnde_keypair.pubkey(), 10.0, MNDE_MINT_DECIMALS.into(), None),
+//         );
+
+//         svm.set_account(
+//             SWITCHBOARD_USDC_FEED,
+//             create_switchboard_price_feed(1, USDC_MINT_DECIMALS.into()),
+//         );
+
+//         svm.set_account(
+//             SWITCHBOARD_SOL_FEED,
+//             create_switchboard_price_feed(10, SOL_MINT_DECIMALS.into()),
+//         );
+
+//         svm.set_account(
+//             PYTH_SOL_REAL_FEED,
+//             create_pyth_price_account_from_file(
+//                 include_bytes!("../data/H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG.bin").to_vec(),
+//             ),
+//         );
+
+//         svm.set_account(
+//             PYTH_USDC_REAL_FEED,
+//             create_pyth_price_account_from_file(
+//                 include_bytes!("../data/Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD.bin").to_vec(),
+//             ),
+//         );
+
+//         let mut clock: Clock = svm.get_sysvar();
+//         clock.unix_timestamp = 0;
+//         svm.set_sysvar(&clock);
+
+//         solana_logger::setup_with_default(RUST_LOG_DEFAULT);
+
+//         let mut context = Rc::new(RefCell::new(TestContext {
+//             svm,
+//             payer: Keypair::new(),
+//         }));
+
+//         let usdc_mint_f = MintFixture2::new(
+//             Rc::clone(&context),
+//             Some(usdc_keypair),
+//             Some(USDC_MINT_DECIMALS),
+//         )
+//         .await;
+
+//         let sol_mint_f = MintFixture2::new(
+//             Rc::clone(&context),
+//             Some(sol_keypair),
+//             Some(SOL_MINT_DECIMALS),
+//         )
+//         .await;
+//         let sol_equivalent_mint_f = MintFixture2::new(
+//             Rc::clone(&context),
+//             Some(sol_equivalent_keypair),
+//             Some(SOL_MINT_DECIMALS),
+//         )
+//         .await;
+//         let mnde_mint_f = MintFixture2::new(
+//             Rc::clone(&context),
+//             Some(mnde_keypair),
+//             Some(MNDE_MINT_DECIMALS),
+//         )
+//         .await;
+//         let usdc_t22_mint_f = MintFixture2::new_token_22(
+//             Rc::clone(&context),
+//             Some(usdc_t22_keypair),
+//             Some(USDC_MINT_DECIMALS),
+//             extensions,
+//         )
+//         .await;
+//         let pyusd_mint_f = MintFixture2::new_from_file(&context, "src/fixtures/pyUSD.json");
+//         let t22_with_fee_mint_f = MintFixture2::new_token_22(
+//             Rc::clone(&context),
+//             Some(t22_with_fee_keypair),
+//             Some(T22_WITH_FEE_MINT_DECIMALS),
+//             &[SupportedExtension2::TransferFee],
+//         )
+//         .await;
+
+//         let tester_group = MarginfiGroupFixture::new(
+//             Rc::clone(&context),
+//             test_settings
+//                 .clone()
+//                 .map(|ts| ts.group_config.unwrap_or(GroupConfig { admin: None }))
+//                 .unwrap_or(GroupConfig { admin: None }),
+//         )
+//         .await;
+
+//         let mut banks = HashMap::new();
+//         if let Some(test_settings) = test_settings.clone() {
+//             for bank in test_settings.banks.iter() {
+//                 let (bank_mint, default_config) = match bank.mint {
+//                     BankMint::Usdc => (&usdc_mint_f, *DEFAULT_USDC_TEST_BANK_CONFIG),
+//                     BankMint::UsdcSwb => (&usdc_mint_f, *DEFAULT_USDC_TEST_SW_BANK_CONFIG),
+//                     BankMint::Sol => (&sol_mint_f, *DEFAULT_SOL_TEST_BANK_CONFIG),
+//                     BankMint::SolSwb => (&sol_mint_f, *DEFAULT_SOL_TEST_SW_BANK_CONFIG),
+//                     BankMint::SolEquivalent => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent1 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent2 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent3 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent4 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent5 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent6 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent7 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent8 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::SolEquivalent9 => (
+//                         &sol_equivalent_mint_f,
+//                         *DEFAULT_SOL_EQUIVALENT_TEST_BANK_CONFIG,
+//                     ),
+//                     BankMint::T22WithFee => {
+//                         (&t22_with_fee_mint_f, *DEFAULT_T22_WITH_FEE_TEST_BANK_CONFIG)
+//                     }
+//                     BankMint::UsdcT22 => (&usdc_t22_mint_f, *DEFAULT_USDC_TEST_BANK_CONFIG),
+//                     BankMint::PyUSD => (&pyusd_mint_f, *DEFAULT_PYUSD_TEST_BANK_CONFIG),
+//                     BankMint::SolEqIsolated => {
+//                         (&sol_equivalent_mint_f, *DEFAULT_SOL_EQ_ISO_TEST_BANK_CONFIG)
+//                     }
+//                 };
+
+//                 banks.insert(
+//                     bank.mint.clone(),
+//                     tester_group
+//                         .try_lending_pool_add_bank(bank_mint, bank.config.unwrap_or(default_config))
+//                         .await
+//                         .unwrap(),
+//                 );
+//             }
+//         };
+
+//         Self {
+//             context: Rc::clone(&context),
+//             marginfi_group: tester_group,
+//             banks,
+//         }
+//     }
+
+//     pub async fn create_marginfi_account(&self) -> MarginfiAccountFixture {
+//         MarginfiAccountFixture::new(Rc::clone(&self.context), &self.marginfi_group.key).await
+//     }
+
+//     pub async fn try_load(
+//         &self,
+//         address: &Pubkey,
+//     ) -> anyhow::Result<Option<Account>, BanksClientError> {
+//         self.context
+//             .borrow_mut()
+//             .banks_client
+//             .get_account(*address)
+//             .await
+//     }
+
+//     pub async fn load_and_deserialize<T: anchor_lang::AccountDeserialize>(
+//         &self,
+//         address: &Pubkey,
+//     ) -> T {
+//         let ai = self
+//             .context
+//             .borrow_mut()
+//             .banks_client
+//             .get_account(*address)
+//             .await
+//             .unwrap()
+//             .unwrap();
+
+//         T::try_deserialize(&mut ai.data.as_slice()).unwrap()
+//     }
+
+//     pub fn payer(&self) -> Pubkey {
+//         self.context.borrow().payer.pubkey()
+//     }
+
+//     pub fn payer_keypair(&self) -> Keypair {
+//         clone_keypair(&self.context.borrow().payer)
+//     }
+
+//     pub fn get_bank(&self, bank_mint: &BankMint) -> &BankFixture {
+//         self.banks.get(bank_mint).unwrap()
+//     }
+
+//     pub fn get_bank_mut(&mut self, bank_mint: &BankMint) -> &mut BankFixture {
+//         self.banks.get_mut(bank_mint).unwrap()
+//     }
+
+//     pub fn set_time(&self, timestamp: i64) {
+//         let clock = Clock {
+//             unix_timestamp: timestamp,
+//             ..Default::default()
+//         };
+//         self.context.borrow_mut().set_sysvar(&clock);
+//     }
+
+//     pub async fn set_pyth_oracle_timestamp(&self, address: Pubkey, timestamp: i64) {
+//         let mut ctx = self.context.borrow_mut();
+
+//         let mut account = ctx
+//             .banks_client
+//             .get_account(address)
+//             .await
+//             .unwrap()
+//             .unwrap();
+
+//         let data = account.data.as_mut_slice();
+//         let mut data: SolanaPriceAccount =
+//             *pyth_sdk_solana::state::load_price_account(data).unwrap();
+
+//         data.timestamp = timestamp;
+//         data.prev_timestamp = timestamp;
+
+//         let bytes = bytemuck::bytes_of(&data);
+
+//         let mut aso = AccountSharedData::from(account);
+
+//         aso.set_data_from_slice(bytes);
+
+//         ctx.set_account(&address, &aso);
+//     }
+
+//     pub async fn advance_time(&self, seconds: i64) {
+//         let mut clock: Clock = self
+//             .context
+//             .borrow_mut()
+//             .banks_client
+//             .get_sysvar()
+//             .await
+//             .unwrap();
+//         clock.unix_timestamp += seconds;
+//         self.context.borrow_mut().set_sysvar(&clock);
+//         self.context
+//             .borrow_mut()
+//             .warp_forward_force_reward_interval_end()
+//             .unwrap();
+//     }
+
+//     pub async fn get_minimum_rent_for_size(&self, size: usize) -> u64 {
+//         self.context
+//             .borrow_mut()
+//             .banks_client
+//             .get_rent()
+//             .await
+//             .unwrap()
+//             .minimum_balance(size)
+//     }
+
+//     pub async fn get_latest_blockhash(&self) -> Hash {
+//         self.context
+//             .borrow_mut()
+//             .banks_client
+//             .get_latest_blockhash()
+//             .await
+//             .unwrap()
+//     }
+
+//     pub async fn get_slot(&self) -> u64 {
+//         self.context
+//             .borrow_mut()
+//             .banks_client
+//             .get_root_slot()
+//             .await
+//             .unwrap()
+//     }
+
+//     pub async fn get_clock(&self) -> Clock {
+//         deserialize::<Clock>(
+//             &self
+//                 .context
+//                 .borrow_mut()
+//                 .banks_client
+//                 .get_account(sysvar::clock::ID)
+//                 .await
+//                 .unwrap()
+//                 .unwrap()
+//                 .data,
+//         )
+//         .unwrap()
+//     }
+
+//     pub async fn get_sufficient_collateral_for_outflow(
+//         &self,
+//         outflow_amount: f64,
+//         outflow_mint: &BankMint,
+//         collateral_mint: &BankMint,
+//     ) -> f64 {
+//         let outflow_bank = self.get_bank(outflow_mint);
+//         let collateral_bank = self.get_bank(collateral_mint);
+
+//         let outflow_mint_price = outflow_bank.get_price().await;
+//         let collateral_mint_price = collateral_bank.get_price().await;
+
+//         let collateral_amount = get_sufficient_collateral_for_outflow(
+//             outflow_amount,
+//             outflow_mint_price,
+//             collateral_mint_price,
+//         );
+
+//         let decimal_scaling = 10.0_f64.powi(collateral_bank.mint.mint.decimals as i32);
+//         let collateral_amount =
+//             ((collateral_amount * decimal_scaling).round() + 1.) / decimal_scaling;
+
+//         get_max_deposit_amount_pre_fee(collateral_amount)
+//     }
+// }

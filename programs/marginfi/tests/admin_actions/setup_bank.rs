@@ -11,15 +11,15 @@ use test_case::test_case;
 #[tokio::test]
 async fn add_bank_success() -> anyhow::Result<()> {
     // Setup test executor with non-admin payer
-    let test_f = TestFixture::new(None).await;
+    let test_f = TestFixture2::new(None).await;
 
     let mints = vec![
         (
-            MintFixture::new(test_f.context.clone(), None, None).await,
+            MintFixture2::new(test_f.context.clone(), None, None).await,
             *DEFAULT_USDC_TEST_BANK_CONFIG,
         ),
         (
-            MintFixture::new_token_22(
+            MintFixture2::new_token_22(
                 test_f.context.clone(),
                 None,
                 None,
@@ -29,7 +29,7 @@ async fn add_bank_success() -> anyhow::Result<()> {
             *DEFAULT_T22_WITH_FEE_TEST_BANK_CONFIG,
         ),
         (
-            MintFixture::new_from_file(&test_f.context.clone(), "src/fixtures/pyUSD.json"),
+            MintFixture2::new_from_file(&test_f.context.clone(), "src/fixtures/pyUSD.json"),
             *DEFAULT_PYUSD_TEST_BANK_CONFIG,
         ),
     ];

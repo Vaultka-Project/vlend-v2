@@ -37,6 +37,15 @@ pub async fn load_and_deserialize<T: AccountDeserialize>(
     T::try_deserialize(&mut ai.data.as_slice()).unwrap()
 }
 
+// pub async fn load_and_deserialize2<T: AccountDeserialize>(
+//     ctx: Rc<RefCell<TestContext>>,
+//     address: &Pubkey,
+// ) -> T {
+//     let ai = ctx.borrow_mut().svm.get_account(address).unwrap();
+
+//     T::try_deserialize(&mut ai.data.as_slice()).unwrap()
+// }
+
 pub fn make_ix<T>(accounts: T, ix_data: Vec<u8>) -> Instruction
 where
     T: ToAccountMetas,

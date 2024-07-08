@@ -50,10 +50,10 @@ path = "../programs/test_transfer_hook"
 package = "test_transfer_hook"
 features = ["no-entrypoint"]
 
-[dependencies.deser_check]
-path = "../programs/deser_check"
-package = "deser_check"
-features = ["no-entrypoint"]
+# [dependencies.deser_check]
+# path = "../programs/deser_check"
+# package = "deser_check"
+# features = ["no-entrypoint"]
 
 [dependencies.liquidity-incentive-program]
 path = "../programs/liquidity-incentive-program"

@@ -43,11 +43,22 @@ pub mod marginfi {
         ctx: Context<LendingPoolAddBank>,
         bank_config: BankConfigCompact,
     ) -> MarginfiResult {
-        msg!("config: {:?}", bank_config);
         msg!("asset maint: {:?}", bank_config.asset_weight_maint.value);
         msg!("asset init: {:?}", bank_config.asset_weight_init.value);
         msg!("liab maint: {:?}", bank_config.liability_weight_maint.value);
         msg!("liab init: {:?}", bank_config.liability_weight_init.value);
+        solana_program::log::sol_log_64(
+            bank_config.interest_rate_config.max_interest_rate.value[0] as u64,
+            bank_config.interest_rate_config.max_interest_rate.value[5] as u64,
+            bank_config.interest_rate_config.max_interest_rate.value[6] as u64,
+            bank_config.interest_rate_config.max_interest_rate.value[7] as u64,
+            bank_config.interest_rate_config.max_interest_rate.value[8] as u64,
+        );
+        msg!(
+            "max_interest_rate: {:?}",
+            bank_config.interest_rate_config.max_interest_rate.value
+        );
+        msg!("config: {:?}", bank_config);
         marginfi_group::lending_pool_add_bank(ctx, bank_config.into())
     }
 

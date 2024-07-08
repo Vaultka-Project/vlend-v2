@@ -9,6 +9,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::*;
+// use type_layout::TypeLayout;
 
 /// Add a bank to the lending pool
 ///
@@ -29,6 +30,8 @@ pub fn lending_pool_add_bank(
     } = ctx.accounts;
 
     let mut bank = bank_loader.load_init()?;
+
+    msg!("config: {:?}", bank_config);
 
     let liquidity_vault_bump = ctx.bumps.liquidity_vault;
     let liquidity_vault_authority_bump = ctx.bumps.liquidity_vault_authority;

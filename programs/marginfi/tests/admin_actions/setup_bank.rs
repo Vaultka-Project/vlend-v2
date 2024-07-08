@@ -35,6 +35,7 @@ async fn add_bank_success() -> anyhow::Result<()> {
     ];
 
     for (mint_f, bank_config) in mints {
+        println!("bank config: {:?}", bank_config);
         let res = test_f
             .marginfi_group
             .try_lending_pool_add_bank(&mint_f, bank_config)
@@ -42,9 +43,12 @@ async fn add_bank_success() -> anyhow::Result<()> {
         assert!(res.is_ok());
 
         // Check bank is active
-        let bank = res.unwrap();
-        let bank = test_f.try_load(&bank.key).await?;
+        let bank_f = res.unwrap();
+        let bank = test_f.try_load(&bank_f.key).await?;
         assert!(bank.is_some());
+
+        let bank = bank_f.load().await;
+        assert_eq!(bank.config, bank_config);
     }
 
     Ok(())

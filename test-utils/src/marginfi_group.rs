@@ -115,6 +115,9 @@ impl MarginfiGroupFixture {
             self.ctx.borrow().last_blockhash,
         );
 
+        println!("tx: {:?}", tx.message.instructions.len());
+        println!("txdata: {:?}", tx.message.instructions[0].data);
+
         self.ctx
             .borrow_mut()
             .banks_client

@@ -43,6 +43,11 @@ pub mod marginfi {
         ctx: Context<LendingPoolAddBank>,
         bank_config: BankConfigCompact,
     ) -> MarginfiResult {
+        msg!("config: {:?}", bank_config);
+        msg!("asset maint: {:?}", bank_config.asset_weight_maint.value);
+        msg!("asset init: {:?}", bank_config.asset_weight_init.value);
+        msg!("liab maint: {:?}", bank_config.liability_weight_maint.value);
+        msg!("liab init: {:?}", bank_config.liability_weight_init.value);
         marginfi_group::lending_pool_add_bank(ctx, bank_config.into())
     }
 

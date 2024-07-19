@@ -1,4 +1,5 @@
 use super::{bank::BankFixture, marginfi_account::MarginfiAccountFixture};
+use crate::prelude::{get_oracle_id_from_feed_id, MintFixture};
 use crate::utils::*;
 use crate::{lif::LiquidInsuranceFundFixture, prelude::MintFixture};
 use anchor_lang::{prelude::*, solana_program::system_program, InstructionData};
@@ -100,7 +101,17 @@ impl MarginfiGroupFixture {
         }
         .to_account_metas(Some(true));
 
-        accounts.push(AccountMeta::new_readonly(bank_config.oracle_keys[0], false));
+        let oracle_key = {
+            let oracle_key_or_feed_id = bank_config.oracle_keys[0];
+            match bank_config.oracle_setup {
+                marginfi::state::price::OracleSetup::PythPushOracle => {
+                    get_oracle_id_from_feed_id(oracle_key_or_feed_id).unwrap()
+                }
+                _ => oracle_key_or_feed_id,
+            }
+        };
+
+        accounts.push(AccountMeta::new_readonly(oracle_key, false));
 
         let ix = Instruction {
             program_id: marginfi::id(),

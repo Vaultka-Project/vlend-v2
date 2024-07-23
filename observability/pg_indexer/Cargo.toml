@@ -1,0 +1,49 @@
+[package]
+name = "pg_indexer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mfi-index"
+path = "src/bin/main.rs"
+
+[dependencies]
+solana-sdk = { workspace = true }
+solana-client = { workspace = true }
+solana-transaction-status = { workspace = true }
+solana-account-decoder = { workspace = true }
+
+anchor-client = { workspace = true }
+
+pyth-sdk-solana = { workspace = true }
+
+spl-token = { workspace = true }
+
+marginfi = { path = "../../programs/marginfi", features = [
+    "no-entrypoint",
+    "client",
+] }
+
+anyhow = "1.0.86"
+clap = { version = "4.5.9", features = ["derive"] }
+dotenv = "0.15.0"
+envconfig = "0.10.0"
+sqlx = { version = "=0.6.3", features = ["runtime-tokio-rustls", "postgres", "chrono"] }
+tokio = { version = "1.38.0", features = ["macros", "rt-multi-thread"] }
+tracing = "0.1.40"
+tracing-stackdriver = "0.10.0"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
+chrono = "0.4.38"
+yellowstone-grpc-client = { git = "https://github.com/mrgnlabs/yellowstone-grpc.git", branch = "1.18.17" }
+yellowstone-grpc-proto = { git = "https://github.com/mrgnlabs/yellowstone-grpc.git", branch = "1.18.17" }
+futures = "0.3.30"
+serde_json = "1.0.120"
+base64 = "0.22.1"
+uuid = { version = "1.10.0", features = ["v4"] }
+fixed = "1.27.0"
+itertools = "0.13.0"
+json = "0.12.4"
+fixed-macro = "1.2.0"
+backoff = { version = "0.4.0", features = ["tokio"] }
+serde = "1.0.204"
+rayon = "1.10.0"

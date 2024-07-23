@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS {table_name} (
+    id VARCHAR PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+    signature VARCHAR NOT NULL,
+    slot BIGINT NOT NULL,
+    signer VARCHAR NOT NULL,
+    success BOOLEAN NOT NULL,
+    version VARCHAR NOT NULL,
+    fee BIGINT NOT NULL,
+    meta TEXT NOT NULL,
+    message TEXT NOT NULL
+);

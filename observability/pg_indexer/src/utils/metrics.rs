@@ -79,13 +79,13 @@ impl MarginfiGroupMetrics {
                         bank_pk
                     )
                 })?;
-        
+
                 let (real_price, maint_asset_price, maint_liab_price) = (
                     oralce.get_price_of_type(OraclePriceType::RealTime, None),
                     oralce.get_price_of_type(OraclePriceType::RealTime, Some(PriceBias::Low)),
                     oralce.get_price_of_type(OraclePriceType::RealTime, Some(PriceBias::High)),
                 );
-        
+
                 let asset_value_usd = calc_value(
                     bank_accounts
                         .bank
@@ -122,12 +122,12 @@ impl MarginfiGroupMetrics {
                     Some(liability_weight),
                 )?
                 .to_num::<f64>();
-        
+
                 sums.0 += asset_value_usd;
                 sums.1 += liability_value_usd;
                 sums.2 += asset_value_usd_maint;
                 sums.3 += liability_value_usd_maint;
-        
+
                 Ok(sums)
             },
         )?;

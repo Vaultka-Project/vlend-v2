@@ -29,6 +29,7 @@ spl-transfer-hook-interface = { workspace = true }
 spl-tlv-account-resolution = { workspace = true }
 
 
+anchor-lang = { workspace = true }
 anchor-spl = { workspace = true, features = ["metadata"] }
 anchor-lang-29 = { workspace = true }
 
@@ -37,7 +38,7 @@ pyth-solana-receiver-sdk = { workspace = true }
 switchboard-solana = { workspace = true }
 borsh = "0.10.3"
 
-mpl-token-metadata = "1.13.2"
+mpl-token-metadata = "4.1.2"
 spl-token = "4.0"
 
 bytemuck = "1.9.1"

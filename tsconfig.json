@@ -6,6 +6,7 @@
     "module": "commonjs",
     "target": "ES2022",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "sourceMap": true,
   }
 }

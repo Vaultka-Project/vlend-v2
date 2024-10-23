@@ -67,13 +67,15 @@ address = "SVSPxpvHdN29nkVg9rPapPNDddN5DipNLRUFhyjFThE" # spl single pool progra
 program = "tests/fixtures/spl_single_pool.so"
 
 # To update:
-# * clone https://github.com/Kamino-Finance/klend and run anchor build
-# * copy the .so file to fixtures. 
-# If Kamino is still using Anchor version <0.30.1, do the following steps too:
-# * copy the .json idl to another folder (for example your desktop) and run 
-# anchor idl convert kamino_lending.json -o converted_idl.json
-# * delete the old file, rename convert_idl to kamino_lending.json, and run
-# anchor idl type kamino_lending.json -o kamino_lending.ts
+# * clone https://github.com/Kamino-Finance/klend and run anchor build, ensuring that the anchor and
+#   solana version used to build are the same as the ones specified in cargo.toml (the repo does not
+#   have a [toolchain] declaration)
+# * copy the .so file to fixtures. If Kamino is still using Anchor version <0.30.1, do the following
+# steps too:
+# * copy the .json idl to another folder (for example your desktop) and run anchor idl convert
+# kamino_lending.json -o converted_idl.json
+# * delete the old file, rename convert_idl to kamino_lending.json, and run anchor idl type
+# kamino_lending.json -o kamino_lending.ts
 # * copy both files to fixtures
 [[test.genesis]]
 address = "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD" # klend program

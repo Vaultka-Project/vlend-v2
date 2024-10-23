@@ -81,6 +81,11 @@ export let banksClient: BanksClient;
 /** keys copied into the bankrun instance */
 let copyKeys: PublicKey[] = [];
 
+export let kaminoAccounts;
+export const MARKET = "market";
+export const USDC_RESERVE = "usdc_reserve";
+export const TOKEN_A_RESERVE = "token_a_reserve";
+
 export const mochaHooks = {
   beforeAll: async () => {
     // If this is false, you are in the wrong environment to run this test suite, try polyfill.
@@ -89,6 +94,7 @@ export const mochaHooks = {
     const mrgnProgram = workspace.Marginfi as Program<Marginfi>;
     const provider = AnchorProvider.local();
     const wallet = provider.wallet as Wallet;
+    kaminoAccounts = new Map<string, PublicKey>();
 
     copyKeys.push(wallet.publicKey);
 

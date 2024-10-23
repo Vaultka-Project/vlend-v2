@@ -6,17 +6,33 @@ import {
 } from "@coral-xyz/anchor";
 import {
   Keypair,
+  PublicKey,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
   Transaction,
 } from "@solana/web3.js";
-import { groupAdmin } from "./rootHooks";
+import {
+  ecosystem,
+  groupAdmin,
+  kaminoAccounts,
+  MARKET,
+  TOKEN_A_RESERVE,
+  USDC_RESERVE,
+} from "./rootHooks";
 import { KaminoLending } from "./fixtures/kamino_lending";
 import idl from "./fixtures/kamino_lending.json";
 import { assert } from "chai";
-import { lendingMarketAuthPda } from "@kamino-finance/klend-sdk";
+import {
+  lendingMarketAuthPda,
+  reserveCollateralMintPda,
+  reserveCollateralSupplyPda,
+  reserveFeeVaultPda,
+  reserveLiqSupplyPda,
+} from "@kamino-finance/klend-sdk";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 const LENDING_MARKET_SIZE = 4656;
+const RESERVE_SIZE = 8616;
 
 describe("Init Kamino instance", () => {
   const provider = getProvider() as AnchorProvider;
@@ -71,9 +87,63 @@ describe("Init Kamino instance", () => {
       lendingMarket,
       groupAdmin.wallet,
     ]);
+    kaminoAccounts.set(MARKET, lendingMarket.publicKey);
   });
 
-  it("do nothing", async () => {
-    assert.equal(1, 1);
+  it("(admin) create USDC reserve", async () => {
+    await createReserve(ecosystem.usdcMint.publicKey, USDC_RESERVE);
   });
+
+  it("(admin) create token A reserve", async () => {
+    await createReserve(ecosystem.tokenAMint.publicKey, TOKEN_A_RESERVE);
+  });
+
+  async function createReserve(mint: PublicKey, reserveLabel: string) {
+    const reserve = Keypair.generate();
+    const market = kaminoAccounts.get(MARKET);
+    const id = klendProgram.programId;
+
+    const [lendingMarketAuthority] = lendingMarketAuthPda(market, id);
+    const [reserveLiquiditySupply] = reserveLiqSupplyPda(market, mint, id);
+    const [reserveFeeVault] = reserveFeeVaultPda(market, mint, id);
+    const [collatMint] = reserveCollateralMintPda(market, mint, id);
+    const [collatSupply] = reserveCollateralSupplyPda(market, mint, id);
+
+    const tx = new Transaction().add(
+      SystemProgram.createAccount({
+        fromPubkey: groupAdmin.wallet.publicKey,
+        newAccountPubkey: reserve.publicKey,
+        space: RESERVE_SIZE + 8,
+        lamports:
+          await klendProgram.provider.connection.getMinimumBalanceForRentExemption(
+            RESERVE_SIZE + 8
+          ),
+        programId: klendProgram.programId,
+      }),
+      await klendProgram.methods
+        .initReserve()
+        .accounts({
+          lendingMarketOwner: groupAdmin.wallet.publicKey,
+          lendingMarket: market,
+          lendingMarketAuthority,
+          reserve: reserve.publicKey,
+          reserveLiquidityMint: mint,
+          reserveLiquiditySupply,
+          feeReceiver: reserveFeeVault,
+          reserveCollateralMint: collatMint,
+          reserveCollateralSupply: collatSupply,
+          rent: SYSVAR_RENT_PUBKEY,
+          liquidityTokenProgram: TOKEN_PROGRAM_ID,
+          collateralTokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction()
+    );
+
+    await klendProgram.provider.sendAndConfirm(tx, [
+      reserve,
+      groupAdmin.wallet,
+    ]);
+    kaminoAccounts.set(reserveLabel, reserve.publicKey);
+  }
 });

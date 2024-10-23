@@ -16,7 +16,7 @@ import idl from "./fixtures/kamino_lending.json";
 import { assert } from "chai";
 import { lendingMarketAuthPda } from "@kamino-finance/klend-sdk";
 
-const LENDING_MARKET_SIZE = 4656 + 8;
+const LENDING_MARKET_SIZE = 4656;
 
 describe("Init Kamino instance", () => {
   const provider = getProvider() as AnchorProvider;
@@ -41,28 +41,20 @@ describe("Init Kamino instance", () => {
       klendProgram.programId
     );
 
-    // Created a zeroed account that's large enough to hold the lending market
     let tx = new Transaction();
     tx.add(
+      // Create a zeroed account that's large enough to hold the lending market
       SystemProgram.createAccount({
         fromPubkey: groupAdmin.wallet.publicKey,
         newAccountPubkey: lendingMarket.publicKey,
-        space: LENDING_MARKET_SIZE,
+        space: LENDING_MARKET_SIZE + 8,
         lamports:
           await klendProgram.provider.connection.getMinimumBalanceForRentExemption(
-            LENDING_MARKET_SIZE
+            LENDING_MARKET_SIZE + 8
           ),
         programId: klendProgram.programId,
-      })
-    );
-    await klendProgram.provider.sendAndConfirm(tx, [
-      groupAdmin.wallet,
-      lendingMarket,
-    ]);
-
-    // Init the lending market
-    tx = new Transaction();
-    tx.add(
+      }),
+      // Init lending market
       await klendProgram.methods
         .initLendingMarket(quoteCurrency)
         .accounts({
@@ -74,7 +66,11 @@ describe("Init Kamino instance", () => {
         })
         .instruction()
     );
-    await klendProgram.provider.sendAndConfirm(tx, [groupAdmin.wallet]);
+
+    await klendProgram.provider.sendAndConfirm(tx, [
+      lendingMarket,
+      groupAdmin.wallet,
+    ]);
   });
 
   it("do nothing", async () => {

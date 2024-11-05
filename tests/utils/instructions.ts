@@ -40,6 +40,7 @@ export const addBank = (program: Program<Marginfi>, args: AddBankArgs) => {
   };
 
   const ix = program.methods
+    // @ts-ignore // TODO fix after package update
     .lendingPoolAddBank({
       assetWeightInit: args.config.assetWeightInit,
       assetWeightMaint: args.config.assetWeightMaint,

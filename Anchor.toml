@@ -19,9 +19,15 @@ marginfi = "MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA"
 url = "https://api.apr.dev"
 
 [provider]
+## GENERAL LOCALNET TESTING
 cluster = "localnet"
-# cluster = "https://devnet.rpcpool.com/"
 wallet = "~/.config/solana/id.json"
+## DEVNET DEPLOYMENT
+# cluster = "https://devnet.rpcpool.com/"
+# wallet = "~/keys/staging-deploy.json"
+## STAGING DEPLOYMENT
+# cluster = "https://api.mainnet-beta.solana.com"
+# wallet = "~/keys/staging-deploy.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/*.spec.ts --exit --require tests/rootHooks.ts"

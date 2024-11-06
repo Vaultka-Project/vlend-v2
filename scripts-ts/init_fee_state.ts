@@ -14,7 +14,6 @@ import { bigNumberToWrappedI80F48 } from "@mrgnlabs/mrgn-common";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { loadKeypairFromFile } from "./utils";
 
-// Configurable
 type Config = {
   PROGRAM_ID: string;
   ADMIN_PUBKEY: PublicKey;
@@ -27,6 +26,7 @@ const config: Config = {
 }
 
 async function main() {
+  marginfiIdl.address = config.PROGRAM_ID;
   const connection = new Connection(
     "https://api.mainnet-beta.solana.com",
     "confirmed"
@@ -37,8 +37,8 @@ async function main() {
 
   const args: InitGlobalFeeStateArgs = {
     payer: wallet.publicKey,
-    admin: ADMIN_PUBKEY,
-    wallet: WALLET_PUBKEY,
+    admin: config.ADMIN_PUBKEY,
+    wallet: config.WALLET_PUBKEY,
     bankInitFlatSolFee: 5000,
     programFeeFixed: bigNumberToWrappedI80F48(0),
     programFeeRate: bigNumberToWrappedI80F48(0.01),

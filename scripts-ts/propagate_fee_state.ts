@@ -18,7 +18,6 @@ type Config = {
   GROUP_KEYS: PublicKey[];
 };
 
-// Define your configuration
 const config: Config = {
   PROGRAM_ID: "stag8sTKds2h4KzjUw3zKTsxbqvT4XKHdaR9X9E6Rct",
   GROUP_KEYS: [
@@ -43,11 +42,7 @@ async function main() {
   });
 
   const program = new Program<Marginfi>(marginfiIdl as Marginfi, provider);
-
-  // Create a new transaction
   const transaction = new Transaction();
-
-  // Loop over each group key and add a `propagateFeeState` instruction for each one
   for (const groupKey of config.GROUP_KEYS) {
     const ix = await program.methods
       .propagateFeeState()
@@ -60,7 +55,6 @@ async function main() {
     transaction.add(ix);
   }
 
-  // Send and confirm the transaction
   try {
     const signature = await sendAndConfirmTransaction(connection, transaction, [
       wallet,

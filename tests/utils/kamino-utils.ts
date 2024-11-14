@@ -8,13 +8,13 @@ export const OBLIGATION_SIZE = 3336;
 
 /**
  * Refresh a generic Kamino reserve with a legacy Pyth oracle
- * @param program 
- * @param reserve 
- * @param market 
- * @param oracle 
- * @returns 
+ * @param program
+ * @param reserve
+ * @param market
+ * @param oracle
+ * @returns
  */
-export const simpleRefresh = (
+export const simpleRefreshReserve = (
   program: Program<KaminoLending>,
   reserve: PublicKey,
   market: PublicKey,
@@ -33,4 +33,58 @@ export const simpleRefresh = (
     .instruction();
 
   return ix;
+};
+
+/**
+ * Refresh a generic Kamino obligation
+ * @param program 
+ * @param market 
+ * @param obligation 
+ * @returns 
+ */
+export const simpleRefreshObligation = (
+  program: Program<KaminoLending>,
+  market: PublicKey,
+  obligation: PublicKey
+) => {
+  const ix = program.methods
+    .refreshObligation()
+    .accounts({
+      lendingMarket: market,
+      obligation: obligation,
+    })
+    .instruction();
+
+  return ix;
+};
+
+const BASE_SEED_USER_METADATA = "user_meta";
+
+export const deriveUserMetadata = (programId: PublicKey, wallet: PublicKey) => {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(BASE_SEED_USER_METADATA), wallet.toBuffer()],
+    programId
+  );
+};
+
+export const deriveObligation = (
+  programId: PublicKey,
+  tag: number,
+  id: number,
+  ownerPublicKey: PublicKey,
+  marketPublicKey: PublicKey,
+  seed1AccountKey: PublicKey,
+  seed2AccountKey: PublicKey
+) => {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from([tag]),
+      Buffer.from([id]),
+      ownerPublicKey.toBuffer(),
+      marketPublicKey.toBuffer(),
+      seed1AccountKey.toBuffer(),
+      seed2AccountKey.toBuffer(),
+    ],
+    programId
+  );
 };

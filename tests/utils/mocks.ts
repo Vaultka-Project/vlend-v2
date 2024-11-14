@@ -107,6 +107,14 @@ export const USER_ACCOUNT: string = "g0_acc";
 export const LST_ATA = "v0_lstAta";
 /** in mockUser.accounts, key used to get/set the users's LST stake account for validator 0 */
 export const STAKE_ACC = "v0_stakeAcc";
+/** in mockUser.accounts, the Kamino user metadata account */
+export const KAMINO_METADATA = "kamino_metadata";
+/** in mockUser.accounts, the LUT stored in user metadata */
+export const KAMINO_LUT = "kamino_lut";
+/** in mockUser.accounts, the obligation for the main market */
+export const KAMINO_OBLIGATION = "kamino_obligation";
+/** in mockUser.accounts, the liquidity account for USDC */
+export const USDC_LIQUIDITY_ATA = "usdc_liquidity";
 
 /**
  * Options to skip various parts of mock user setup

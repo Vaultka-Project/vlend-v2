@@ -82,8 +82,11 @@ export let banksClient: BanksClient;
 let copyKeys: PublicKey[] = [];
 
 export let kaminoAccounts: Map<string, PublicKey>;
+/** Kamino Market */
 export const MARKET = "market";
+/** Kamino USDC Reserve */
 export const USDC_RESERVE = "usdc_reserve";
+/** Kamino Token A Reserve */
 export const TOKEN_A_RESERVE = "token_a_reserve";
 
 export const mochaHooks = {

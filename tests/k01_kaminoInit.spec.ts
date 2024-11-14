@@ -20,6 +20,7 @@ import {
   oracles,
   TOKEN_A_RESERVE,
   USDC_RESERVE,
+  verbose,
 } from "./rootHooks";
 import { KaminoLending } from "./fixtures/kamino_lending";
 import idl from "./fixtures/kamino_lending.json";
@@ -41,13 +42,14 @@ import {
   updateEntireReserveConfigIx,
 } from "@kamino-finance/klend-sdk";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import {
-  assertBNApproximately,
-  assertKeysEqual,
-} from "./utils/genericTests";
+import { assertBNApproximately, assertKeysEqual } from "./utils/genericTests";
 import Decimal from "decimal.js";
 import { Fraction } from "@kamino-finance/klend-sdk/dist/classes/fraction";
-import { simpleRefresh } from "./utils/kamino-utils";
+import {
+  LENDING_MARKET_SIZE,
+  RESERVE_SIZE,
+  simpleRefreshReserve,
+} from "./utils/kamino-utils";
 
 describe("Init Kamino instance", () => {
   const provider = getProvider() as AnchorProvider;
@@ -103,6 +105,9 @@ describe("Init Kamino instance", () => {
       groupAdmin.wallet,
     ]);
     kaminoAccounts.set(MARKET, lendingMarket.publicKey);
+    if (verbose) {
+      console.log("Kamino market: " + lendingMarket.publicKey);
+    }
 
     const marketAcc: LendingMarket = LendingMarket.decode(
       (
@@ -138,7 +143,7 @@ describe("Init Kamino instance", () => {
     let marketKey = kaminoAccounts.get(MARKET);
     let reserveKey = kaminoAccounts.get(USDC_RESERVE);
     const tx = new Transaction().add(
-      await simpleRefresh(
+      await simpleRefreshReserve(
         klendProgram,
         reserveKey,
         marketKey,
@@ -165,7 +170,7 @@ describe("Init Kamino instance", () => {
     let marketKey = kaminoAccounts.get(MARKET);
     let reserveKey = kaminoAccounts.get(TOKEN_A_RESERVE);
     const tx = new Transaction().add(
-      await simpleRefresh(
+      await simpleRefreshReserve(
         klendProgram,
         reserveKey,
         marketKey,
@@ -240,6 +245,10 @@ describe("Init Kamino instance", () => {
       groupAdmin.wallet,
     ]);
     kaminoAccounts.set(reserveLabel, reserve.publicKey);
+
+    if (verbose) {
+      console.log("Kamino reserve " + reserveLabel + " " + reserve.publicKey);
+    }
 
     const marketAcc: LendingMarket = LendingMarket.decode(
       (await provider.connection.getAccountInfo(market)).data

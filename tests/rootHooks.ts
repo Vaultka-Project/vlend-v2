@@ -81,7 +81,7 @@ export let banksClient: BanksClient;
 /** keys copied into the bankrun instance */
 let copyKeys: PublicKey[] = [];
 
-export let kaminoAccounts;
+export let kaminoAccounts: Map<string, PublicKey>;
 export const MARKET = "market";
 export const USDC_RESERVE = "usdc_reserve";
 export const TOKEN_A_RESERVE = "token_a_reserve";

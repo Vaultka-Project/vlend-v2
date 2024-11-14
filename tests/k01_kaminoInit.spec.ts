@@ -1,6 +1,5 @@
 import {
   AnchorProvider,
-  BN,
   getProvider,
   Program,
   Wallet,
@@ -27,42 +26,28 @@ import idl from "./fixtures/kamino_lending.json";
 import { assert } from "chai";
 import {
   AssetReserveConfig,
-  AssetReserveConfigParams,
   BorrowRateCurve,
   BorrowRateCurveFields,
   CurvePoint,
-  DefaultConfigParams,
   LendingMarket,
   lendingMarketAuthPda,
   MarketWithAddress,
-  NULL_PUBKEY,
-  parseForChangesReserveConfigAndGetIxs,
   PriceFeed,
-  PriceHeuristic,
-  PriceHeuristicFields,
   Reserve,
   reserveCollateralMintPda,
   reserveCollateralSupplyPda,
-  ReserveConfig,
-  ReserveConfigFields,
-  ReserveFees,
-  ReserveFeesFields,
   reserveFeeVaultPda,
   reserveLiqSupplyPda,
-  ScopeConfiguration,
-  ScopeConfigurationFields,
-  TokenInfo,
-  TokenInfoFields,
-  TokenInfoJSON,
   updateEntireReserveConfigIx,
 } from "@kamino-finance/klend-sdk";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { assertKeysEqual } from "./utils/genericTests";
+import {
+  assertBNApproximately,
+  assertKeysEqual,
+} from "./utils/genericTests";
 import Decimal from "decimal.js";
 import { Fraction } from "@kamino-finance/klend-sdk/dist/classes/fraction";
-
-const LENDING_MARKET_SIZE = 4656;
-const RESERVE_SIZE = 8616;
+import { simpleRefresh } from "./utils/kamino-utils";
 
 describe("Init Kamino instance", () => {
   const provider = getProvider() as AnchorProvider;
@@ -134,6 +119,8 @@ describe("Init Kamino instance", () => {
       ecosystem.usdcMint.publicKey,
       USDC_RESERVE,
       ecosystem.usdcDecimals,
+      // Note: Kamino performs zero oracle validation, it is happy to accept the mock program here
+      // instead of Pyth, or any other spoof of Pyth with the same account strcuture, so be wary!
       oracles.usdcOracle.publicKey
     );
   });
@@ -144,6 +131,60 @@ describe("Init Kamino instance", () => {
       TOKEN_A_RESERVE,
       ecosystem.tokenADecimals,
       oracles.tokenAOracle.publicKey
+    );
+  });
+
+  it("(permissionless) refresh USDC reserve price", async () => {
+    let marketKey = kaminoAccounts.get(MARKET);
+    let reserveKey = kaminoAccounts.get(USDC_RESERVE);
+    const tx = new Transaction().add(
+      await simpleRefresh(
+        klendProgram,
+        reserveKey,
+        marketKey,
+        oracles.usdcOracle.publicKey
+      )
+    );
+
+    await klendProgram.provider.sendAndConfirm(tx);
+    const reserveAcc: Reserve = Reserve.decode(
+      (await provider.connection.getAccountInfo(reserveKey)).data
+    );
+
+    // Note: prices are stored as scaled fraction (multiply price by 2^60)
+    // E.g. the price is 10 so 10 * 2^60 ~= 1.15292e+19
+    let expected = Fraction.fromDecimal(new Decimal(oracles.usdcPrice));
+    assertBNApproximately(
+      reserveAcc.liquidity.marketPriceSf,
+      expected.valueSf,
+      100_000
+    );
+  });
+
+  it("(permissionless) refresh token A reserve price", async () => {
+    let marketKey = kaminoAccounts.get(MARKET);
+    let reserveKey = kaminoAccounts.get(TOKEN_A_RESERVE);
+    const tx = new Transaction().add(
+      await simpleRefresh(
+        klendProgram,
+        reserveKey,
+        marketKey,
+        oracles.tokenAOracle.publicKey
+      )
+    );
+
+    await klendProgram.provider.sendAndConfirm(tx);
+    const reserveAcc: Reserve = Reserve.decode(
+      (await provider.connection.getAccountInfo(reserveKey)).data
+    );
+
+    // Note: prices are stored as scaled fraction (multiply price by 2^60)
+    // E.g. the price is 10 so 10 * 2^60 ~= 1.15292e+19
+    let expected = Fraction.fromDecimal(new Decimal(oracles.tokenAPrice));
+    assertBNApproximately(
+      reserveAcc.liquidity.marketPriceSf,
+      expected.valueSf,
+      100_000
     );
   });
 
@@ -263,7 +304,5 @@ describe("Init Kamino instance", () => {
       updateReserveIx
     );
     await groupAdmin.userMarginProgram.provider.sendAndConfirm(updateTx);
-    // Note: fails due to tx size limit from the extra signature
-    // await klendProgram.provider.sendAndConfirm(updateTx, [groupAdmin.wallet]);
   }
 });

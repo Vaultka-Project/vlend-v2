@@ -294,9 +294,9 @@ export const writeProductBuffer = (
  * @param wsolDecimals
  * @param usdcPrice
  * @param usdcDecimals
- * @param tokenAPrice:   
+ * @param tokenAPrice:
  * @param tokenADecimals:
- * @param tokenBPrice:   
+ * @param tokenBPrice:
  * @param tokenBDecimals:
  * @param verbose
  * @param skips - set to true to skip sending txes, which makes tests run faster if you don't need
@@ -412,27 +412,27 @@ export const setupPythOracles = async (
     console.log("token a price: \t" + tokenAPythOracle.publicKey);
     console.log("token b price: \t" + tokenBPythOracle.publicKey);
     console.log(
-      "Price of 1 wsol.......$" +
+      "Price 1 wsol.......$" +
         wsolPrice +
-        "\t  one token in native decimals: " +
+        "\t  1 token in native decimals: " +
         (1 * 10 ** wsolDecimals).toLocaleString()
     );
     console.log(
-      "Price of 1 usdc.......$" +
+      "Price 1 usdc.......$" +
         usdcPrice +
-        "\t  one token in native decimals: " +
+        "\t  1 token in native decimals: " +
         (1 * 10 ** usdcDecimals).toLocaleString()
     );
     console.log(
-      "Price of 1 token A....$" +
+      "Price 1 token A....$" +
         tokenAPrice +
-        "\t  one token in native decimals: " +
+        "\t  1 token in native decimals: " +
         (1 * 10 ** tokenADecimals).toLocaleString()
     );
     console.log(
-      "Price of 1 token B....$" +
+      "Price 1 token B....$" +
         tokenBPrice +
-        "\t  one token in native decimals: " +
+        "\t  1 token in native decimals: " +
         (1 * 10 ** tokenBDecimals).toLocaleString()
     );
     console.log("");

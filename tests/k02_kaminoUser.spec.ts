@@ -47,7 +47,7 @@ describe("Init Kamino user", () => {
 
   async function initUserMetadata(userIndex: number) {
     const user = users[userIndex];
-    const provider = user.userMarginProgram.provider;
+    const provider = user.mrgnProgram.provider;
     const connection = provider.connection;
 
     // Get the recent slot for LUT creation
@@ -125,7 +125,7 @@ describe("Init Kamino user", () => {
         .instruction()
     );
 
-    await user.userMarginProgram.provider.sendAndConfirm(tx);
+    await user.mrgnProgram.provider.sendAndConfirm(tx);
     user.accounts.set(KAMINO_OBLIGATION, obligationKey);
 
     if (verbose) {

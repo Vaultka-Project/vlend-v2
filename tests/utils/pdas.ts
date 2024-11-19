@@ -87,3 +87,10 @@ export const deriveGlobalFeeState = (programId: PublicKey) => {
     programId
   );
 };
+
+export const deriveKwrapUser = (programId: PublicKey, user: PublicKey) => {
+  return PublicKey.findProgramAddressSync(
+    [user.toBuffer(), Buffer.from("user_account", "utf-8")],
+    programId
+  );
+};

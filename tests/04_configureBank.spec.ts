@@ -47,7 +47,7 @@ describe("Lending pool configure bank", () => {
       permissionlessBadDebtSettlement: null,
     };
 
-    await groupAdmin.userMarginProgram!.provider.sendAndConfirm!(
+    await groupAdmin.mrgnProgram!.provider.sendAndConfirm!(
       new Transaction().add(
         await configureBank(program, {
           marginfiGroup: marginfiGroup.publicKey,
@@ -86,7 +86,7 @@ describe("Lending pool configure bank", () => {
   });
 
   it("(admin) Restore default settings to bank (USDC)", async () => {
-    await groupAdmin.userMarginProgram!.provider.sendAndConfirm!(
+    await groupAdmin.mrgnProgram!.provider.sendAndConfirm!(
       new Transaction().add(
         await configureBank(program, {
           marginfiGroup: marginfiGroup.publicKey,

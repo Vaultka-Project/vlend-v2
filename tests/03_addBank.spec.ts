@@ -46,7 +46,7 @@ describe("Lending pool add bank (add bank to group)", () => {
       globalFeeWallet
     );
 
-    await groupAdmin.userMarginProgram!.provider.sendAndConfirm!(
+    await groupAdmin.mrgnProgram!.provider.sendAndConfirm!(
       new Transaction().add(
         await addBank(program, {
           marginfiGroup: marginfiGroup.publicKey,
@@ -158,7 +158,7 @@ describe("Lending pool add bank (add bank to group)", () => {
     let config = defaultBankConfig(oracles.tokenAOracle.publicKey);
     let bankKey = bankKeypairA.publicKey;
 
-    await groupAdmin.userMarginProgram!.provider.sendAndConfirm!(
+    await groupAdmin.mrgnProgram!.provider.sendAndConfirm!(
       new Transaction().add(
         await addBank(program, {
           marginfiGroup: marginfiGroup.publicKey,

@@ -312,6 +312,6 @@ describe("Init Kamino instance", () => {
       }),
       updateReserveIx
     );
-    await groupAdmin.userMarginProgram.provider.sendAndConfirm(updateTx);
+    await groupAdmin.mrgnProgram.provider.sendAndConfirm(updateTx);
   }
 });

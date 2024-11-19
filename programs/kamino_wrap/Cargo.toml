@@ -1,0 +1,37 @@
+[package]
+name = "kamino_wrap"
+version = "0.1.0"
+description = "Wraps Kamino accounts into program-owned somewhat-fungible assets"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "kamino_wrap"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = ["mainnet-beta"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+test-bpf = ["test", "debug"]
+test = []
+client = []
+devnet = []
+mainnet-beta = []
+debug = []
+staging = []
+ignore-fee-deploy = []
+
+[dependencies]
+solana-program = { workspace = true }
+
+anchor-lang = { workspace = true }
+anchor-lang-29 = { workspace = true }
+anchor-spl = { workspace = true }
+
+borsh = "0.10.3"
+bytemuck = "1.9.1"
+cfg-if = "1.0.0"
+static_assertions = "1.1.0"

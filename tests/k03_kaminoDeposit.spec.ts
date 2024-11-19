@@ -106,6 +106,6 @@ describe("Deposit to Kamino reserve", () => {
         .instruction()
     );
 
-    await users[0].userMarginProgram.provider.sendAndConfirm(tx);
+    await users[0].mrgnProgram.provider.sendAndConfirm(tx);
   });
 });

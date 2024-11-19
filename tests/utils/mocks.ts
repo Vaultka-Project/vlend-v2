@@ -16,6 +16,7 @@ import {
 } from "@solana/web3.js";
 import { Marginfi } from "../../target/types/marginfi";
 import { Mocks } from "../../target/types/mocks";
+import { KaminoWrap } from "../../target/types/kamino_wrap";
 
 export type Ecosystem = {
   /** A generic wsol mint with 9 decimals (same as native) */
@@ -96,7 +97,9 @@ export type MockUser = {
   /** Users's ATA for USDC */
   usdcAccount: PublicKey;
   /** A marginfi program that uses the user's wallet */
-  userMarginProgram: Program<Marginfi> | undefined;
+  mrgnProgram: Program<Marginfi> | undefined;
+  /** A kwrap program that uses the user's wallet */
+  kwrapProgram: Program<KaminoWrap> | undefined;
   /** A map to store arbitrary accounts related to the user using a string key */
   accounts: Map<string, PublicKey>;
 };
@@ -106,6 +109,7 @@ export const USER_ACCOUNT: string = "g0_acc";
 /** in mockUser.accounts, key used to get/set the users's LST ATA for validator 0 */
 export const LST_ATA = "v0_lstAta";
 /** in mockUser.accounts, key used to get/set the users's LST stake account for validator 0 */
+
 export const STAKE_ACC = "v0_stakeAcc";
 /** in mockUser.accounts, the Kamino user metadata account */
 export const KAMINO_METADATA = "kamino_metadata";
@@ -113,14 +117,20 @@ export const KAMINO_METADATA = "kamino_metadata";
 export const KAMINO_LUT = "kamino_lut";
 /** in mockUser.accounts, the obligation for the main market */
 export const KAMINO_OBLIGATION = "kamino_obligation";
-/** in mockUser.accounts, the liquidity account for USDC */
-export const USDC_LIQUIDITY_ATA = "usdc_liquidity";
+
+/** in mockUser.accounts, user kamino-wrap user account */
+export const KWRAP_USER_ACCOUNT = "kwrap_user";
+/** in mockUser.accounts, the LUT stored in kwrap controlled user metadata */
+export const KWRAP_LUT = "kwrap_lut";
+/** in mockUser.accounts, the kwrap controlled kamino metadata account */
+export const KWRAP_METADATA = "kwrap_metadata";
 
 /**
  * Options to skip various parts of mock user setup
  */
 export interface SetupTestUserOptions {
   marginProgram: Program<Marginfi>;
+  kwrapProgram: Program<KaminoWrap>;
   /** Force the mock user to use this keypair */
   forceWallet: Keypair;
   wsolMint: PublicKey;
@@ -224,8 +234,11 @@ export const setupTestUser = async (
     tokenBAccount: tokenBAccount,
     usdcAccount: usdcAccount,
 
-    userMarginProgram: options.marginProgram
+    mrgnProgram: options.marginProgram
       ? getUserMarginfiProgram(options.marginProgram, userWalletKeypair)
+      : undefined,
+    kwrapProgram: options.kwrapProgram
+      ? getUserKwrapProgram(options.kwrapProgram, userWalletKeypair)
       : undefined,
     accounts: new Map<string, PublicKey>(),
   };
@@ -240,6 +253,23 @@ export const setupTestUser = async (
  */
 export const getUserMarginfiProgram = (
   program: Program<Marginfi>,
+  userWallet: Keypair | Wallet
+) => {
+  const wallet =
+    userWallet instanceof Keypair ? new Wallet(userWallet) : userWallet;
+  const provider = new AnchorProvider(program.provider.connection, wallet, {});
+  const userProgram = new Program(program.idl, provider);
+  return userProgram;
+};
+
+/**
+ * Generates a mock program that can sign transactions as the user's wallet
+ * @param program
+ * @param userWallet
+ * @returns
+ */
+export const getUserKwrapProgram = (
+  program: Program<KaminoWrap>,
   userWallet: Keypair | Wallet
 ) => {
   const wallet =

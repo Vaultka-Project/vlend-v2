@@ -39,6 +39,7 @@ import { decodeSinglePool } from "./utils/spl-staking-utils";
 import { bigNumberToWrappedI80F48 } from "@mrgnlabs/mrgn-common";
 import { initGlobalFeeState } from "./utils/group-instructions";
 import { deriveGlobalFeeState } from "./utils/pdas";
+import { KaminoWrap } from "../target/types/kamino_wrap";
 
 export const ecosystem: Ecosystem = getGenericEcosystem();
 export let oracles: Oracles = undefined;
@@ -95,6 +96,7 @@ export const mochaHooks = {
     console.log("Environment supports crypto: ", !!global.crypto?.subtle);
 
     const mrgnProgram = workspace.Marginfi as Program<Marginfi>;
+    const kWrapProgram = workspace.kamino_wrap as Program<KaminoWrap>;
     const provider = AnchorProvider.local();
     const wallet = provider.wallet as Wallet;
     kaminoAccounts = new Map<string, PublicKey>();
@@ -188,6 +190,7 @@ export const mochaHooks = {
 
     const setupUserOptions: SetupTestUserOptions = {
       marginProgram: mrgnProgram,
+      kwrapProgram: kWrapProgram,
       forceWallet: undefined,
       // If mints are created, typically create the ATA too, otherwise pass undefined...
       wsolMint: ecosystem.wsolMint.publicKey,

@@ -1,9 +1,9 @@
 pub mod constants;
 pub mod errors;
 pub mod instructions;
+pub mod ix_utils;
 pub mod macros;
 pub mod state;
-pub mod ix_utils;
 
 use anchor_lang::prelude::*;
 use instructions::*;
@@ -18,11 +18,11 @@ pub mod kamino_wrap {
         instructions::init_user_account(ctx)
     }
 
-    pub fn init_metadata(
-        ctx: Context<InitMetaData>,
-        recent_slot: u64,
-        meta_bump: u8,
-    ) -> Result<()> {
-        instructions::init_metadata(ctx, recent_slot, meta_bump)
+    pub fn init_metadata(ctx: Context<InitMetaData>, recent_slot: u64) -> Result<()> {
+        instructions::init_metadata(ctx, recent_slot)
+    }
+
+    pub fn init_obligation(ctx: Context<InitObligation>, tag: u8, id: u8) -> Result<()> {
+        instructions::init_obligation(ctx, tag, id)
     }
 }

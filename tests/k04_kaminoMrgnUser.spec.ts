@@ -9,25 +9,31 @@ import {
 import {
   AddressLookupTableProgram,
   PublicKey,
-  SYSVAR_RENT_PUBKEY,
   Transaction,
 } from "@solana/web3.js";
-import { users, verbose } from "./rootHooks";
+import { kaminoAccounts, MARKET, users, verbose } from "./rootHooks";
 import { KaminoLending } from "./fixtures/kamino_lending";
 import idl from "./fixtures/kamino_lending.json";
 import {
-  KAMINO_LUT,
-  KAMINO_METADATA,
   KWRAP_LUT,
   KWRAP_METADATA,
+  KWRAP_OBLIGATION,
   KWRAP_USER_ACCOUNT,
 } from "./utils/mocks";
 import { KaminoWrap } from "../target/types/kamino_wrap";
-import { initKwrapUser } from "./utils/kwrap-instructions";
+import {
+  initKwrapMeta,
+  initKwrapObligation,
+  initKwrapUser,
+} from "./utils/kwrap-instructions";
 import { deriveKwrapUser } from "./utils/pdas";
-import { assertBNApproximately, assertKeysEqual } from "./utils/genericTests";
-import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
-import { deriveUserMetadata } from "./utils/kamino-utils";
+import {
+  assertBNApproximately,
+  assertBNEqual,
+  assertKeyDefault,
+  assertKeysEqual,
+} from "./utils/genericTests";
+import { deriveObligation, deriveUserMetadata } from "./utils/kamino-utils";
 import { assert } from "chai";
 
 describe("Init Kamino user", () => {
@@ -40,69 +46,69 @@ describe("Init Kamino user", () => {
   );
   const kWrapProgram = workspace.kamino_wrap as Program<KaminoWrap>;
 
-  it("(user 0) Init mrgn-kamino user - happy path", async () => {
-    let tx = new Transaction().add(
-      await initKwrapUser(kWrapProgram, {
-        payer: users[0].wallet.publicKey,
-        user: users[0].wallet.publicKey,
-      })
-    );
-
-    await users[0].kwrapProgram.provider.sendAndConfirm(tx);
-    const [userAccountKey, bump] = deriveKwrapUser(
-      kWrapProgram.programId,
-      users[0].wallet.publicKey
-    );
-    users[0].accounts.set(KWRAP_USER_ACCOUNT, userAccountKey);
-    if (verbose) {
-      console.log("user 0 kwrap account: " + userAccountKey);
-    }
-
-    const userAccount = await kWrapProgram.account.userAccount.fetch(
-      userAccountKey
-    );
-    assertKeysEqual(userAccount.key, userAccountKey);
-    assertKeysEqual(userAccount.user, users[0].wallet.publicKey);
-    const now = Math.floor(Date.now() / 1000);
-    assertBNApproximately(userAccount.lastActivity, now, 2);
-    assert.equal(userAccount.bumpSeed, bump);
+  it("Init mrgn-kamino users - happy path", async () => {
+    await initMrgnKaminoUserHappyPath(0, verbose);
+    await initMrgnKaminoUserHappyPath(1, verbose);
   });
 
   it("(user 0) Init user mrgn-controlled metadata - happy path", async () => {
-    await initKwrapMetadata(0);
+    await initKwrapMetadataHappyPath(0);
+  });
 
-    const [userAccount] = deriveKwrapUser(
+  it("(user 1) Init user mrgn-controlled metadata - happy path", async () => {
+    await initKwrapMetadataHappyPath(1);
+  });
+
+  it("(user 0) Init user mrgn-controlled obligation on main market - happy path", async () => {
+    await initKwrapObligationHappyPath(0);
+  });
+
+  async function initKwrapObligationHappyPath(userIndex: number) {
+    const user = users[userIndex];
+    const tag = 0;
+    const id = 0;
+    const [userKwrapAccount] = deriveKwrapUser(
       kWrapProgram.programId,
-      users[0].wallet.publicKey
+      user.wallet.publicKey
     );
     const [metadataKey] = deriveUserMetadata(
       klendProgram.programId,
-      userAccount
+      userKwrapAccount
     );
-    const metadataAcc = await klendProgram.account.userMetadata.fetch(
-      metadataKey
+    const [obligationKey] = deriveObligation(
+      klendProgram.programId,
+      tag,
+      id,
+      userKwrapAccount,
+      kaminoAccounts.get(MARKET),
+      PublicKey.default,
+      PublicKey.default
     );
-    assertKeysEqual(metadataAcc.owner, userAccount);
-  });
+    const marketKey = kaminoAccounts.get(MARKET);
 
-  //   it("(user 1) Init user mrgn-controlled metadata - happy path", async () => {
-  //     await initKwrapMetadata(0);
+    let tx = new Transaction().add(
+      await initKwrapObligation(user.kwrapProgram, {
+        userAccount: userKwrapAccount,
+        obligation: obligationKey,
+        lendingMarket: marketKey,
+        userMetadata: metadataKey,
+        tag: tag,
+        id: id,
+      })
+    );
 
-  //     const [userAccount] = deriveKwrapUser(
-  //       kWrapProgram.programId,
-  //       users[1].wallet.publicKey
-  //     );
-  //     const [metadataKey] = deriveUserMetadata(
-  //       klendProgram.programId,
-  //       userAccount
-  //     );
-  //     const metadataAcc = await klendProgram.account.userMetadata.fetch(
-  //       metadataKey
-  //     );
-  //     assertKeysEqual(metadataAcc.owner, userAccount);
-  //   });
+    await user.kwrapProgram.provider.sendAndConfirm(tx);
 
-  async function initKwrapMetadata(userIndex: number) {
+    if (verbose) {
+      console.log(`user ${userIndex} kwrap obligation: ` + obligationKey);
+    }
+
+    user.accounts.set(KWRAP_OBLIGATION, obligationKey);
+
+    // TODO assertions
+  }
+
+  async function initKwrapMetadataHappyPath(userIndex: number) {
     const user = users[userIndex];
     const slot = await user.kwrapProgram.provider.connection.getSlot(
       "finalized"
@@ -123,24 +129,16 @@ describe("Init Kamino user", () => {
       userKwrapAccount
     );
 
-    let tx = new Transaction();
-    tx.add(
-      await user.kwrapProgram.methods
-        .initMetadata(new BN(slot), metadataBump)
-        .accounts({
-          userAccount: userKwrapAccount,
-          userMetadata: metadataKey,
-          referrerUserMetadata: PublicKey.default,
-          userLookupTable: lookupTableAddress,
-        })
-        .instruction()
+    let tx = new Transaction().add(
+      await initKwrapMeta(user.kwrapProgram, {
+        userAccount: userKwrapAccount,
+        userMetadata: metadataKey,
+        userLookupTable: lookupTableAddress,
+        slot: new BN(slot),
+      })
     );
 
-    try {
-      await user.kwrapProgram.provider.sendAndConfirm(tx);
-    } catch (err) {
-      console.log(err);
-    }
+    await user.kwrapProgram.provider.sendAndConfirm(tx);
 
     if (verbose) {
       console.log(`user ${userIndex} kwrap LUT:        ` + lookupTableAddress);
@@ -150,6 +148,45 @@ describe("Init Kamino user", () => {
     user.accounts.set(KWRAP_METADATA, metadataKey);
     user.accounts.set(KWRAP_LUT, lookupTableAddress);
 
-    // TODO assertions
+    const userMetadata = await klendProgram.account.userMetadata.fetch(
+      metadataKey
+    );
+
+    assertKeyDefault(userMetadata.referrer);
+    assertKeysEqual(userMetadata.userLookupTable, lookupTableAddress);
+    assertKeysEqual(userMetadata.owner, userKwrapAccount);
+    assertBNEqual(userMetadata.bump, metadataBump);
+  }
+
+  async function initMrgnKaminoUserHappyPath(
+    userIndex: number,
+    verbose = false
+  ) {
+    const user = users[userIndex];
+    let tx = new Transaction().add(
+      await initKwrapUser(kWrapProgram, {
+        payer: user.wallet.publicKey,
+        user: user.wallet.publicKey,
+      })
+    );
+
+    await user.kwrapProgram.provider.sendAndConfirm(tx);
+    const [userAccountKey, bump] = deriveKwrapUser(
+      kWrapProgram.programId,
+      user.wallet.publicKey
+    );
+    user.accounts.set(KWRAP_USER_ACCOUNT, userAccountKey);
+    if (verbose) {
+      console.log(`user ${userIndex} kwrap acc: ${userAccountKey}`);
+    }
+
+    const userAccount = await kWrapProgram.account.userAccount.fetch(
+      userAccountKey
+    );
+    assertKeysEqual(userAccount.key, userAccountKey);
+    assertKeysEqual(userAccount.user, user.wallet.publicKey);
+    const now = Math.floor(Date.now() / 1000);
+    assertBNApproximately(userAccount.lastActivity, now, 2);
+    assert.equal(userAccount.bumpSeed, bump);
   }
 });

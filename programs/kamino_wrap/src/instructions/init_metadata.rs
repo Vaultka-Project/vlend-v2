@@ -1,14 +1,14 @@
+// Wraps creation of Kamino metadata owned by the user's account. Typically follows init_user
 use crate::constants::LUT_PROGRAM_ID;
-// Wraps creation of Kamino metadata owned by the user's account
 use crate::errors::ErrorCode;
-use crate::ix_utils::init_metadata_ix_data;
+use crate::ix_utils::get_function_hash;
 use crate::{constants::KAMINO_ID, state::UserAccount, user_account_signer_seeds};
 use anchor_lang::prelude::*;
 use solana_program::address_lookup_table::instruction as lut_ix;
 use solana_program::{instruction::Instruction, program::invoke_signed};
 
 #[allow(unused_variables)]
-pub fn init_metadata(ctx: Context<InitMetaData>, recent_slot: u64, meta_bump: u8) -> Result<()> {
+pub fn init_metadata(ctx: Context<InitMetaData>, recent_slot: u64) -> Result<()> {
     {
         // Create the user's LUT
         let user_account = ctx.accounts.user_account.load()?;
@@ -64,7 +64,7 @@ pub fn init_metadata(ctx: Context<InitMetaData>, recent_slot: u64, meta_bump: u8
     Ok(())
 }
 
-pub fn init_meta_cpi_ix(
+fn init_meta_cpi_ix(
     ctx: &Context<InitMetaData>,
     program_id: Pubkey,
     user_lookup_table_key: Pubkey,
@@ -72,8 +72,8 @@ pub fn init_meta_cpi_ix(
     let instruction = Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new_readonly(ctx.accounts.user_account.key(), true), // user account (signer) -> 'owner'
-            AccountMeta::new(ctx.accounts.user.key(), true), // fee_payer -> mutable signer
+            AccountMeta::new_readonly(ctx.accounts.user_account.key(), true), // owner (signer)
+            AccountMeta::new(ctx.accounts.user.key(), true), // fee_payer (mutable signer)
             AccountMeta::new(ctx.accounts.user_metadata.key(), false), // user_metadata (the PDA being init)
             // Note: using program's id as a placeholder
             AccountMeta::new_readonly(ctx.accounts.kamino_program.key(), false), // (placeholder)
@@ -83,6 +83,26 @@ pub fn init_meta_cpi_ix(
         data: init_metadata_ix_data(user_lookup_table_key),
     };
     Ok(instruction)
+}
+
+/// Args for the init_user_metadata CPI
+#[derive(AnchorSerialize, AnchorDeserialize)]
+struct InitMetaDataArgs {
+    user_lookup_table_key: Pubkey,
+}
+
+/// Ix data for init_user_metadata
+fn init_metadata_ix_data(user_lookup_table_key: Pubkey) -> Vec<u8> {
+    let hash = get_function_hash("global", "init_user_metadata");
+    // Bytes: [117, 169, 176, 69, 197, 23, 15, 162]
+    // Hex: 75a9b045c5170fa2
+    let mut buf: Vec<u8> = vec![];
+    buf.extend_from_slice(&hash);
+    let args = InitMetaDataArgs {
+        user_lookup_table_key,
+    };
+    args.serialize(&mut buf).unwrap();
+    buf
 }
 
 #[derive(Accounts)]
@@ -96,7 +116,7 @@ pub struct InitMetaData<'info> {
     )]
     pub user_account: AccountLoader<'info, UserAccount>,
 
-    /// CHECK: checked by CPI.
+    /// CHECK: checked by CPI. Inited by this ix
     #[account(mut)]
     pub user_metadata: UncheckedAccount<'info>,
     /// CHECK: Reserved for future use, currently ignored.

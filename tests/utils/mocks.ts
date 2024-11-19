@@ -124,6 +124,8 @@ export const KWRAP_USER_ACCOUNT = "kwrap_user";
 export const KWRAP_LUT = "kwrap_lut";
 /** in mockUser.accounts, the kwrap controlled kamino metadata account */
 export const KWRAP_METADATA = "kwrap_metadata";
+/** in mockUser.accounts, the kwrap obligation for MARKET */
+export const KWRAP_OBLIGATION = "kwrap_obligation";
 
 /**
  * Options to skip various parts of mock user setup

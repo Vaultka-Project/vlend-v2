@@ -1,3 +1,4 @@
+import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 
 export const deriveLiquidityVaultAuthority = (
@@ -81,6 +82,20 @@ export const deriveEmissionsTokenAccount = (
   );
 };
 
+export const deriveBankWithSeed = (
+  programId: PublicKey,
+  group: PublicKey,
+  bankMint: PublicKey,
+  seed: BN
+) => {
+  return PublicKey.findProgramAddressSync(
+    [group.toBuffer(), bankMint.toBuffer(), seed.toArrayLike(Buffer, "le", 8)],
+    programId
+  );
+};
+
+// ************* Below this line, not yet included in package ****************
+
 export const deriveGlobalFeeState = (programId: PublicKey) => {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("feestate", "utf-8")],
@@ -91,6 +106,16 @@ export const deriveGlobalFeeState = (programId: PublicKey) => {
 export const deriveKwrapUser = (programId: PublicKey, user: PublicKey) => {
   return PublicKey.findProgramAddressSync(
     [user.toBuffer(), Buffer.from("user_account", "utf-8")],
+    programId
+  );
+};
+
+export const deriveStakedSettings = (
+  programId: PublicKey,
+  group: PublicKey
+) => {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("staked_settings", "utf-8"), group.toBuffer()],
     programId
   );
 };

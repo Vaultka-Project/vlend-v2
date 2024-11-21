@@ -12,7 +12,7 @@ pub enum MarginfiError {
     BankAssetCapacityExceeded,
     #[msg("Invalid transfer")] // 6004
     InvalidTransfer,
-    #[msg("Missing Pyth or Bank account")] // 6005
+    #[msg("Missing Oracle, Bank, LST mint, or Sol Pool")] // 6005
     MissingPythOrBankAccount,
     #[msg("Missing Pyth account")] // 6006
     MissingPythAccount,
@@ -102,6 +102,8 @@ pub enum MarginfiError {
     StakePoolValidationFailed,
     #[msg("Invalid ATA for global fee account")] // 6049
     InvalidFeeAta,
+    #[msg("Use add pool permissionless instead")] // 6050
+    AddedStakedPoolManually,
 }
 
 impl From<MarginfiError> for ProgramError {

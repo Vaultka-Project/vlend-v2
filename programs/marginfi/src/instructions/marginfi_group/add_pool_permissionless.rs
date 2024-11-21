@@ -1,34 +1,21 @@
 // Adds a ASSET_TAG_STAKED type bank to a group with sane defaults. Used by validators to add their
-// freshly-minted LST to a group so users can borrow SOL against it
-
-// TODO should we support this for riskTier::Isolated too?
-
-// TODO pick a hardcoded oracle
-
-// TODO pick a hardcoded interest regmine
-
-// TODO pick a hardcoded asset weight (~85%?) and `total_asset_value_init_limit`
-
-// TODO pick a hardcoded max oracle age (~30s?)
-
-// TODO pick a hardcoded initial deposit limit ()
-
-// TODO should the group admin need to opt in to this functionality (configure the group)? We could
-// also configure the key that assumes default admin here instead of using the group's admin
+// stake pool to a group so users can borrow SOL against it
 use crate::{
+    check,
     constants::{
         ASSET_TAG_STAKED, FEE_VAULT_AUTHORITY_SEED, FEE_VAULT_SEED, INSURANCE_VAULT_AUTHORITY_SEED,
         INSURANCE_VAULT_SEED, LIQUIDITY_VAULT_AUTHORITY_SEED, LIQUIDITY_VAULT_SEED,
+        SPL_SINGLE_POOL_ID,
     },
     events::{GroupEventHeader, LendingPoolBankCreateEvent},
     state::{
         marginfi_group::{
             Bank, BankConfigCompact, BankOperationalState, InterestRateConfig, MarginfiGroup,
-            RiskTier,
         },
         price::OracleSetup,
+        staked_settings::StakedSettings,
     },
-    MarginfiResult,
+    MarginfiError, MarginfiResult,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::*;
@@ -44,10 +31,13 @@ pub fn lending_pool_add_bank_permissionless(
         insurance_vault,
         fee_vault,
         bank: bank_loader,
+        stake_pool,
+        sol_pool,
         ..
     } = ctx.accounts;
 
     let mut bank = bank_loader.load_init()?;
+    let settings = ctx.accounts.staked_settings.load()?;
     let group = ctx.accounts.marginfi_group.load()?;
 
     let liquidity_vault_bump = ctx.bumps.liquidity_vault;
@@ -57,6 +47,10 @@ pub fn lending_pool_add_bank_permissionless(
     let fee_vault_bump = ctx.bumps.fee_vault;
     let fee_vault_authority_bump = ctx.bumps.fee_vault_authority;
 
+    // These are placeholder values: staked collateral positions do not support borrowing and likely
+    // never will, thus they will earn no interest.
+
+    // Note: Some placeholder values are non-zero to handle downstream validation checks.
     let default_ir_config = InterestRateConfig {
         optimal_utilization_rate: I80F48!(0.4).into(),
         plateau_interest_rate: I80F48!(0.4).into(),
@@ -67,21 +61,21 @@ pub fn lending_pool_add_bank_permissionless(
     };
 
     let default_config: BankConfigCompact = BankConfigCompact {
-        asset_weight_init: I80F48!(0.5).into(),
-        asset_weight_maint: I80F48!(0.75).into(),
-        liability_weight_init: I80F48!(1.5).into(),
-        liability_weight_maint: I80F48!(1.25).into(),
-        deposit_limit: 42,
-        interest_rate_config: default_ir_config.into(),
+        asset_weight_init: settings.asset_weight_init,
+        asset_weight_maint: settings.asset_weight_maint,
+        liability_weight_init: I80F48!(1.5).into(), // placeholder
+        liability_weight_maint: I80F48!(1.25).into(), // placeholder
+        deposit_limit: settings.deposit_limit,
+        interest_rate_config: default_ir_config.into(), // placeholder
         operational_state: BankOperationalState::Operational,
-        oracle_setup: OracleSetup::PythLegacy,
-        oracle_key: Pubkey::new_unique(),
+        oracle_setup: OracleSetup::StakedWithPythPush,
+        oracle_key: settings.oracle, // becomes config.oracle_keys[0]
         borrow_limit: 0,
-        risk_tier: RiskTier::Collateral,
+        risk_tier: settings.risk_tier,
         asset_tag: ASSET_TAG_STAKED,
         _pad0: [0; 6],
-        total_asset_value_init_limit: 42,
-        oracle_max_age: 10,
+        total_asset_value_init_limit: settings.total_asset_value_init_limit,
+        oracle_max_age: settings.oracle_max_age,
     };
 
     *bank = Bank::new(
@@ -102,7 +96,23 @@ pub fn lending_pool_add_bank_permissionless(
     );
 
     bank.config.validate()?;
-    bank.config.validate_oracle_setup(ctx.remaining_accounts)?;
+
+    check!(
+        stake_pool.owner == &SPL_SINGLE_POOL_ID,
+        MarginfiError::StakePoolValidationFailed
+    );
+    let lst_mint = bank_mint.key();
+    let stake_pool = stake_pool.key();
+    let sol_pool = sol_pool.key();
+    // The mint (for supply) and stake pool (for sol balance) are recorded for price calculation
+    bank.config.oracle_keys[1] = lst_mint;
+    bank.config.oracle_keys[2] = sol_pool;
+    bank.config.validate_oracle_setup(
+        ctx.remaining_accounts,
+        Some(lst_mint),
+        Some(stake_pool),
+        Some(sol_pool),
+    )?;
 
     emit!(LendingPoolBankCreateEvent {
         header: GroupEventHeader {
@@ -121,10 +131,30 @@ pub fn lending_pool_add_bank_permissionless(
 pub struct LendingPoolAddBankPermissionless<'info> {
     pub marginfi_group: AccountLoader<'info, MarginfiGroup>,
 
+    #[account(
+        has_one = marginfi_group
+    )]
+    pub staked_settings: AccountLoader<'info, StakedSettings>,
+
     #[account(mut)]
     pub fee_payer: Signer<'info>,
 
+    /// Mint of the spl-single-pool LST (a PDA derived from `stake_pool`)
+    ///
+    /// CHECK: passing a mint here that is not actually a staked collateral LST is not possible
+    /// because the sol_pool and stake_pool will not derive to a valid PDA which is also owned by
+    /// the staking program and spl-single-pool program.
     pub bank_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    /// CHECK: Validated using `stake_pool`
+    pub sol_pool: AccountInfo<'info>,
+
+    /// CHECK: We validate this is correct backwards, by deriving the PDA of the `bank_mint` using
+    /// this key.
+    ///
+    /// If derives the same `bank_mint`, then this must be the correct stake pool for that mint, and
+    /// we can subsequently use it to validate the `sol_pool`
+    pub stake_pool: AccountInfo<'info>,
 
     #[account(
         init,

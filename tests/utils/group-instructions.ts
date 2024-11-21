@@ -2,14 +2,22 @@ import { BN, Program } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { Marginfi } from "../../target/types/marginfi";
 import {
+  deriveBankWithSeed,
   deriveFeeVault,
   deriveFeeVaultAuthority,
   deriveInsuranceVault,
   deriveInsuranceVaultAuthority,
   deriveLiquidityVault,
   deriveLiquidityVaultAuthority,
+  deriveStakedSettings,
 } from "./pdas";
-import { BankConfig, BankConfigOptWithAssetTag } from "./types";
+import {
+  BankConfig,
+  BankConfigOptWithAssetTag,
+  SINGLE_POOL_PROGRAM_ID,
+  StakedSettingsConfig,
+  StakedSettingsEdit,
+} from "./types";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BankConfigOptRaw } from "@mrgnlabs/marginfi-client-v2";
 import { WrappedI80F48 } from "@mrgnlabs/mrgn-common";
@@ -223,30 +231,7 @@ export const updateEmissions = (
   return ix;
 };
 
-export type CacheSolExchangeRateArgs = {
-  bank: PublicKey;
-  lstMint: PublicKey;
-  solPool: PublicKey;
-  stakePool: PublicKey;
-};
-
-export const cacheSolExchangeRate = (
-  program: Program<Marginfi>,
-  args: CacheSolExchangeRateArgs
-) => {
-  const ix = program.methods
-    .cacheSolExRate()
-    .accounts({
-      bank: args.bank,
-      lstMint: args.lstMint,
-      solPool: args.solPool,
-      stakePool: args.stakePool,
-      // tokenProgram: TOKEN_PROGRAM_ID,
-    })
-    .instruction();
-
-  return ix;
-};
+// ************* Below this line, not yet included in package ****************
 
 export type InitGlobalFeeStateArgs = {
   payer: PublicKey;
@@ -304,6 +289,162 @@ export const editGlobalFeeState = (
       globalFeeAdmin: args.admin,
       // feeState = deriveGlobalFeeState(id),
     })
+    .instruction();
+
+  return ix;
+};
+
+// TODO propagate fee state and test
+
+export type InitStakedSettingsArgs = {
+  group: PublicKey;
+  feePayer: PublicKey;
+  settings: StakedSettingsConfig;
+};
+
+export const initStakedSettings = (
+  program: Program<Marginfi>,
+  args: InitStakedSettingsArgs
+) => {
+  const ix = program.methods
+    .initStakedSettings(args.settings)
+    .accounts({
+      marginfiGroup: args.group,
+      // admin: args.admin, // implied from group
+      feePayer: args.feePayer,
+      // staked_settings: deriveStakedSettings()
+      // rent = SYSVAR_RENT_PUBKEY,
+      // systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+
+  return ix;
+};
+
+export type EditStakedSettingsArgs = {
+  settingsKey: PublicKey;
+  settings: StakedSettingsEdit;
+};
+
+export const editStakedSettings = (
+  program: Program<Marginfi>,
+  args: EditStakedSettingsArgs
+) => {
+  const ix = program.methods
+    .editStakedSettings(args.settings)
+    .accounts({
+      // marginfiGroup: args.group, // implied from stakedSettings
+      // admin: args.admin, // implied from group
+      stakedSettings: args.settingsKey,
+      // rent = SYSVAR_RENT_PUBKEY,
+      // systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+
+  return ix;
+};
+
+/**
+ * oracle - required only if settings updates the oracle key
+ */
+export type PropagateStakedSettingsArgs = {
+  settings: PublicKey;
+  bank: PublicKey;
+  oracle?: PublicKey;
+};
+
+export const propagateStakedSettings = (
+  program: Program<Marginfi>,
+  args: PropagateStakedSettingsArgs
+) => {
+  const remainingAccounts = args.oracle
+    ? [
+        {
+          pubkey: args.oracle,
+          isSigner: false,
+          isWritable: false,
+        } as AccountMeta,
+      ]
+    : [];
+    
+  const ix = program.methods
+    .propagateStakedSettings()
+    .accounts({
+      // marginfiGroup: args.group, // implied from stakedSettings
+      stakedSettings: args.settings,
+      bank: args.bank,
+    })
+    .remainingAccounts(remainingAccounts)
+    .instruction();
+
+  return ix;
+};
+
+export type AddBankPermissionlessArgs = {
+  marginfiGroup: PublicKey;
+  feePayer: PublicKey;
+  pythOracle: PublicKey;
+  stakePool: PublicKey;
+  seed: BN;
+};
+
+export const addBankPermissionless = (
+  program: Program<Marginfi>,
+  args: AddBankPermissionlessArgs
+) => {
+  const [settingsKey] = deriveStakedSettings(
+    program.programId,
+    args.marginfiGroup
+  );
+  const [lstMint] = PublicKey.findProgramAddressSync(
+    [Buffer.from("mint"), args.stakePool.toBuffer()],
+    SINGLE_POOL_PROGRAM_ID
+  );
+  const [solPool] = PublicKey.findProgramAddressSync(
+    [Buffer.from("stake"), args.stakePool.toBuffer()],
+    SINGLE_POOL_PROGRAM_ID
+  );
+
+  // Note: oracle and lst mint/pool are also passed in meta for validation
+  const oracleMeta: AccountMeta = {
+    pubkey: args.pythOracle,
+    isSigner: false,
+    isWritable: false,
+  };
+  const lstMeta: AccountMeta = {
+    pubkey: lstMint,
+    isSigner: false,
+    isWritable: false,
+  };
+  const solPoolMeta: AccountMeta = {
+    pubkey: solPool,
+    isSigner: false,
+    isWritable: false,
+  };
+
+  const ix = program.methods
+    .lendingPoolAddBankPermissionless(args.seed)
+    .accounts({
+      // marginfiGroup: args.marginfiGroup, // implied from stakedSettings
+      stakedSettings: settingsKey,
+      feePayer: args.feePayer,
+      bankMint: lstMint,
+      solPool: solPool,
+      stakePool: args.stakePool,
+      // bank: bankKey, // deriveBankWithSeed
+      // globalFeeState: deriveGlobalFeeState(id),
+      // globalFeeWallet: // implied from globalFeeState,
+      // liquidityVaultAuthority = deriveLiquidityVaultAuthority(id, bank);
+      // liquidityVault = deriveLiquidityVault(id, bank);
+      // insuranceVaultAuthority = deriveInsuranceVaultAuthority(id, bank);
+      // insuranceVault = deriveInsuranceVault(id, bank);
+      // feeVaultAuthority = deriveFeeVaultAuthority(id, bank);
+      // feeVault = deriveFeeVault(id, bank);
+      // rent = SYSVAR_RENT_PUBKEY
+      tokenProgram: TOKEN_PROGRAM_ID,
+      // systemProgram: SystemProgram.programId,
+    })
+    .remainingAccounts([oracleMeta, lstMeta, solPoolMeta])
     .instruction();
 
   return ix;

@@ -30,36 +30,6 @@ export const ASSET_TAG_DEFAULT = 0;
 export const ASSET_TAG_SOL = 1;
 export const ASSET_TAG_STAKED = 2;
 
-type OperationalStateRaw =
-  | { paused: {} }
-  | { operational: {} }
-  | { reduceOnly: {} };
-
-export type BankConfig = {
-  assetWeightInit: WrappedI80F48;
-  assetWeightMaint: WrappedI80F48;
-
-  liabilityWeightInit: WrappedI80F48;
-  liabilityWeightMain: WrappedI80F48;
-
-  depositLimit: BN;
-  interestRateConfig: InterestRateConfigRaw;
-
-  /** Paused = 0, Operational = 1, ReduceOnly = 2 */
-  operationalState: OperationalStateRaw;
-
-  /** None = 0, PythLegacy = 1, SwitchboardV2 = 2, PythPushOracle =3 */
-  oracleSetup: OracleSetupRaw;
-  oracleKey: PublicKey;
-
-  borrowLimit: BN;
-  /** Collateral = 0, Isolated = 1 */
-  riskTier: RiskTierRaw;
-  assetTag: number;
-  totalAssetValueInitLimit: BN;
-  oracleMaxAge: number;
-};
-
 /**
  * The default bank config has
  * * all weights are 1
@@ -158,10 +128,11 @@ export const defaultBankConfigOptRaw = () => {
  * * insuranceIrFee = .02
  * * protocolFixedFeeApr = .03
  * * protocolIrFee = .04
+ * * originationFee = .01
  * @returns
  */
 export const defaultInterestRateConfigRaw = () => {
-  let config: InterestRateConfigRaw = {
+  let config: InterestRateConfigRawWithOrigination = {
     optimalUtilizationRate: bigNumberToWrappedI80F48(0.5),
     plateauInterestRate: bigNumberToWrappedI80F48(0.6),
     maxInterestRate: bigNumberToWrappedI80F48(3),
@@ -169,6 +140,7 @@ export const defaultInterestRateConfigRaw = () => {
     insuranceIrFee: bigNumberToWrappedI80F48(0.02),
     protocolFixedFeeApr: bigNumberToWrappedI80F48(0.03),
     protocolIrFee: bigNumberToWrappedI80F48(0.04),
+    protocolOriginationFee: bigNumberToWrappedI80F48(0.01),
   };
   return config;
 };
@@ -178,7 +150,7 @@ export const defaultInterestRateConfigRaw = () => {
  * @returns
  */
 export const defaultInterestRateConfig = () => {
-  let config: InterestRateConfig = {
+  let config: InterestRateConfigWithOrigination = {
     optimalUtilizationRate: new BigNumber(0.5),
     plateauInterestRate: new BigNumber(0.6),
     maxInterestRate: new BigNumber(3),
@@ -186,11 +158,97 @@ export const defaultInterestRateConfig = () => {
     insuranceIrFee: new BigNumber(0),
     protocolFixedFeeApr: new BigNumber(0),
     protocolIrFee: new BigNumber(0),
+    protocolOriginationFee: new BigNumber(0.1),
   };
   return config;
+};
+
+export const defaultStakedInterestSettings = (oracle: PublicKey) => {
+  let settings: StakedSettingsConfig = {
+    oracle: oracle,
+    assetWeightInit: bigNumberToWrappedI80F48(0.8),
+    assetWeightMaint: bigNumberToWrappedI80F48(0.9),
+    depositLimit: new BN(1_000_000_000_000), // 1000 SOL
+    totalAssetValueInitLimit: new BN(150_000_000),
+    oracleMaxAge: 10,
+    riskTier: {
+      collateral: undefined,
+    },
+  };
+  return settings;
 };
 
 // TODO remove when package updates
 export type BankConfigOptWithAssetTag = BankConfigOptRaw & {
   assetTag: number | null;
 };
+
+// TODO remove when package updates
+export type InterestRateConfigRawWithOrigination = InterestRateConfigRaw & {
+  protocolOriginationFee: WrappedI80F48;
+};
+
+// TODO remove when package updates
+export type InterestRateConfigWithOrigination = InterestRateConfig & {
+  protocolOriginationFee: BigNumber;
+};
+
+// TODO remove when package updates
+type OperationalStateRaw =
+  | { paused: {} }
+  | { operational: {} }
+  | { reduceOnly: {} };
+
+// TODO remove when package updates
+export type BankConfig = {
+  assetWeightInit: WrappedI80F48;
+  assetWeightMaint: WrappedI80F48;
+
+  liabilityWeightInit: WrappedI80F48;
+  liabilityWeightMain: WrappedI80F48;
+
+  depositLimit: BN;
+  interestRateConfig: InterestRateConfigRaw;
+
+  /** Paused = 0, Operational = 1, ReduceOnly = 2 */
+  operationalState: OperationalStateRaw;
+
+  /** None = 0, PythLegacy = 1, SwitchboardV2 = 2, PythPushOracle =3 */
+  oracleSetup: OracleSetupRaw;
+  oracleKey: PublicKey;
+
+  borrowLimit: BN;
+  /** Collateral = 0, Isolated = 1 */
+  riskTier: RiskTierRaw;
+  assetTag: number;
+  totalAssetValueInitLimit: BN;
+  oracleMaxAge: number;
+};
+
+// TODO remove when package updates
+export type StakedSettingsConfig = {
+  oracle: PublicKey;
+
+  assetWeightInit: WrappedI80F48;
+  assetWeightMaint: WrappedI80F48;
+
+  depositLimit: BN;
+  totalAssetValueInitLimit: BN;
+
+  oracleMaxAge: number;
+  /** Collateral = 0, Isolated = 1 */
+  riskTier: RiskTierRaw;
+};
+
+export interface StakedSettingsEdit {
+  oracle: PublicKey | null;
+
+  assetWeightInit: WrappedI80F48 | null;
+  assetWeightMaint: WrappedI80F48 | null;
+
+  depositLimit: BN | null;
+  totalAssetValueInitLimit: BN | null;
+
+  oracleMaxAge: number | null;
+  riskTier: { collateral: {} } | { isolated: {} } | null;
+}

@@ -113,18 +113,21 @@ export const LST_ATA = "v0_lstAta";
 export const STAKE_ACC = "v0_stakeAcc";
 /** in mockUser.accounts, the Kamino user metadata account */
 export const KAMINO_METADATA = "kamino_metadata";
-/** in mockUser.accounts, the LUT stored in user metadata */
+/** in mockUser.accounts, the LUT stored in user kamino metadata */
 export const KAMINO_LUT = "kamino_lut";
 /** in mockUser.accounts, the obligation for the main market */
 export const KAMINO_OBLIGATION = "kamino_obligation";
 
 /** in mockUser.accounts, user kamino-wrap user account */
 export const KWRAP_USER_ACCOUNT = "kwrap_user";
-/** in mockUser.accounts, the LUT stored in kwrap controlled user metadata */
+/** in mockUser.accounts, the LUT stored in kwrap controlled user metadata (also see KAMINO_LUT for
+ * the non-wrapped LUT) */
 export const KWRAP_LUT = "kwrap_lut";
-/** in mockUser.accounts, the kwrap controlled kamino metadata account */
+/** in mockUser.accounts, the kwrap controlled kamino metadata account (also see KAMINO_METADATA for
+ * the non-wrapped meta) */
 export const KWRAP_METADATA = "kwrap_metadata";
-/** in mockUser.accounts, the kwrap obligation for MARKET */
+/** in mockUser.accounts, the kwrapped obligation for MARKET (also see KAMINO_OBLIGATION for the
+ * non-wrapped account) */
 export const KWRAP_OBLIGATION = "kwrap_obligation";
 
 /**

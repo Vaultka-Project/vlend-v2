@@ -105,7 +105,26 @@ describe("Init Kamino user", () => {
 
     user.accounts.set(KWRAP_OBLIGATION, obligationKey);
 
-    // TODO assertions
+    const kwrappedObligation = await klendProgram.account.obligation.fetch(
+      obligationKey
+    );
+
+    assertKeysEqual(kwrappedObligation.owner, userKwrapAccount);
+    assertKeyDefault(kwrappedObligation.referrer);
+    assertKeysEqual(kwrappedObligation.lendingMarket, marketKey);
+    const deposits = kwrappedObligation.deposits;
+    for (let i = 0; i < deposits.length; i++) {
+      assertKeyDefault(deposits[i].depositReserve);
+      assertBNEqual(deposits[i].depositedAmount, 0);
+      assertBNEqual(deposits[i].marketValueSf, 0);
+    }
+    const borrows = kwrappedObligation.borrows;
+    for (let i = 0; i < borrows.length; i++) {
+      assertKeyDefault(borrows[i].borrowReserve);
+      assertBNEqual(borrows[i].borrowedAmountSf, 0);
+      assertBNEqual(borrows[i].marketValueSf, 0);
+    }
+    assert.equal(kwrappedObligation.hasDebt, 0);
   }
 
   async function initKwrapMetadataHappyPath(userIndex: number) {

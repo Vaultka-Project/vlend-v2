@@ -3,12 +3,13 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::{assert_struct_align, assert_struct_size};
 
-assert_struct_size!(UserAccount, 1176);
+assert_struct_size!(UserAccount, 1432);
 assert_struct_align!(UserAccount, 8);
 
-pub const USER_ACCOUNT_PADDING: usize = 256;
+pub const USER_ACCOUNT_PADDING: usize = 512;
 
 /// The central account management structure for a user's Kamino positions to be used as collateral on mrgn
+/// * Rent ~= 0.011 SOL
 #[account(zero_copy)]
 #[repr(C)]
 pub struct UserAccount {
@@ -24,6 +25,7 @@ pub struct UserAccount {
     // Reserved for future keys
     _reserved0: [u8; 128],
 
+    // ??? Make this authoritative?
     /// At-a-glance information about markets this account has positions in.
     /// * Not sorted in any particular order
     /// * Non-authoritative. Kamino has 5 "primary" markets as of November 2024 (Jito, JLP, Main,

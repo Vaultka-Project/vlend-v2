@@ -36,7 +36,7 @@ import {
 import { deriveObligation, deriveUserMetadata } from "./utils/kamino-utils";
 import { assert } from "chai";
 
-describe("Init Kamino user", () => {
+describe("Init mrgn-controlled Kamino user", () => {
   const provider = getProvider() as AnchorProvider;
   const wallet = provider.wallet as Wallet;
 
@@ -61,6 +61,10 @@ describe("Init Kamino user", () => {
 
   it("(user 0) Init user mrgn-controlled obligation on main market - happy path", async () => {
     await initKwrapObligationHappyPath(0);
+  });
+
+  it("(user 0) Init user mrgn-controlled obligation on main market - happy path", async () => {
+    await initKwrapObligationHappyPath(1);
   });
 
   async function initKwrapObligationHappyPath(userIndex: number) {

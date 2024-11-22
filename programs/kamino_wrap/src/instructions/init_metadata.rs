@@ -7,7 +7,8 @@ use anchor_lang::prelude::*;
 use solana_program::address_lookup_table::instruction as lut_ix;
 use solana_program::{instruction::Instruction, program::invoke_signed};
 
-#[allow(unused_variables)]
+// We could compute the slot using the system clock instead of passing it in args, but the caller
+// has to derive the LUT key anyways, and this ensures they are using the same slot to do so.
 pub fn init_metadata(ctx: Context<InitMetaData>, recent_slot: u64) -> Result<()> {
     {
         // Create the user's LUT

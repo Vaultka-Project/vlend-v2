@@ -51,10 +51,10 @@ impl UserAccount {
 
     /// Adds a new KaminoMarketInfo entry to the next available non-occupied slot in `market_info`.
     /// Does nothing if no slots are available.
-    pub fn add_market_info(&mut self, market: Pubkey, obligation: Pubkey) {
+    pub fn add_market_info(&mut self, market: &Pubkey, obligation: &Pubkey) {
         for market_info in self.market_info.iter_mut() {
             if market_info.market == Pubkey::default() {
-                *market_info = KaminoMarketInfo::new(market, obligation);
+                *market_info = KaminoMarketInfo::new(*market, *obligation);
                 return;
             }
         }
@@ -63,18 +63,18 @@ impl UserAccount {
 
     /// Finds a KaminoMarketInfo entry with the given market.
     /// Returns `Some(&KaminoMarketInfo)` if found, otherwise `None`.
-    pub fn find_market_info_by_market(&self, market: Pubkey) -> Option<&KaminoMarketInfo> {
+    pub fn find_info_by_market(&self, market: &Pubkey) -> Option<&KaminoMarketInfo> {
         self.market_info
             .iter()
-            .find(|&market_info| market_info.market == market)
+            .find(|&market_info| market_info.market.eq(market))
     }
 
     /// Finds a KaminoMarketInfo entry with the given obligation.
     /// Returns `Some(&KaminoMarketInfo)` if found, otherwise `None`.
-    pub fn find_market_info_by_obligation(&self, obligation: Pubkey) -> Option<&KaminoMarketInfo> {
+    pub fn find_info_by_obligation(&self, obligation: &Pubkey) -> Option<&KaminoMarketInfo> {
         self.market_info
             .iter()
-            .find(|&market_info| market_info.obligation == obligation)
+            .find(|&market_info| market_info.obligation.eq(obligation))
     }
 }
 

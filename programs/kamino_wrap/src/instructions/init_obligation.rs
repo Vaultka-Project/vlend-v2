@@ -7,7 +7,6 @@ use crate::{
 use anchor_lang::prelude::*;
 use solana_program::{instruction::Instruction, program::invoke_signed};
 
-#[allow(unused_variables)]
 pub fn init_obligation(ctx: Context<InitObligation>, tag: u8, id: u8) -> Result<()> {
     {
         // Create user obligation
@@ -34,8 +33,8 @@ pub fn init_obligation(ctx: Context<InitObligation>, tag: u8, id: u8) -> Result<
     let mut user_account = ctx.accounts.user_account.load_mut()?;
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
     user_account.add_market_info(
-        ctx.accounts.lending_market.key(),
-        ctx.accounts.obligation.key(),
+        &ctx.accounts.lending_market.key(),
+        &ctx.accounts.obligation.key(),
     );
 
     Ok(())

@@ -89,3 +89,49 @@ export const initKwrapObligation = (
 
   return ix;
 };
+
+export type FreshDepositArgs = {
+  /** In native decimals */
+  liquidityAmount: BN;
+  userAccount: PublicKey;
+  obligation: PublicKey;
+  lendingMarket: PublicKey;
+  lendingMarketAuthority: PublicKey;
+  reserve: PublicKey;
+  reserveLiquidityMint: PublicKey;
+  reserveLiquiditySupply: PublicKey;
+  reserveCollateralMint: PublicKey;
+  reserveDestinationDepositCollateral: PublicKey;
+  userSourceLiquidity: PublicKey;
+  liquidityTokenProgram: PublicKey;
+  /** Currently does nothing */
+  placeholderUserDestinationCollateral?: PublicKey;
+};
+
+export const freshDeposit = (
+  program: Program<KaminoWrap>,
+  args: FreshDepositArgs
+) => {
+  const ix = program.methods
+    .freshDeposit(args.liquidityAmount)
+    .accounts({
+      // user (implied from userAccount), must sign
+      userAccount: args.userAccount,
+      obligation: args.obligation,
+      lendingMarket: args.lendingMarket,
+      lendingMarketAuthority: args.lendingMarketAuthority,
+      reserve: args.reserve,
+      reserveLiquidityMint: args.reserveLiquidityMint,
+      reserveLiquiditySupply: args.reserveLiquiditySupply,
+      reserveCollateralMint: args.reserveCollateralMint,
+      reserveDestinationDepositCollateral: args.reserveDestinationDepositCollateral,
+      userSourceLiquidity: args.userSourceLiquidity,
+      placeholder: args.placeholderUserDestinationCollateral || null,
+      // collateralTokenProgram: // (hard coded to Token classic)
+      liquidityTokenProgram: args.liquidityTokenProgram,
+      // instructionSysvarAccount: // (hard coded)
+    })
+    .instruction();
+
+  return ix;
+};

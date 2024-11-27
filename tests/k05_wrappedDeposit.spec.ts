@@ -16,8 +16,14 @@ import {
   MARKET,
   USDC_RESERVE,
   ecosystem,
+  oracles,
 } from "./rootHooks";
-import { deriveUserMetadata, deriveObligation } from "./utils/kamino-utils";
+import {
+  deriveUserMetadata,
+  deriveObligation,
+  simpleRefreshReserve,
+  simpleRefreshObligation,
+} from "./utils/kamino-utils";
 import { deriveKwrapUser } from "./utils/pdas";
 import { KWRAP_OBLIGATION, KWRAP_USER_ACCOUNT } from "./utils/mocks";
 import { freshDeposit } from "./utils/kwrap-instructions";
@@ -74,9 +80,19 @@ describe("Deposit from Kamino account", () => {
       amt
     );
 
+    let fundTx = new Transaction().add(createAtaIx, transferIx);
+    await users[0].kwrapProgram.provider.sendAndConfirm(fundTx);
+
     let tx = new Transaction().add(
-      createAtaIx,
-      transferIx,
+      // Note: Kamino does TX introspection, and requires these kamino-native ixes to be here,
+      // exactly, and in this order, in the tx.
+      await simpleRefreshReserve(
+        klendProgram,
+        reserveKey,
+        market,
+        oracles.usdcOracle.publicKey
+      ),
+      await simpleRefreshObligation(klendProgram, market, obligation),
       await freshDeposit(users[0].kwrapProgram, {
         liquidityAmount: amt,
         userAccount: kwrapAccount,

@@ -1,5 +1,5 @@
 import { Program } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
+import { AccountMeta, PublicKey } from "@solana/web3.js";
 import { KaminoLending } from "../fixtures/kamino_lending";
 
 export const LENDING_MARKET_SIZE = 4656;
@@ -37,22 +37,30 @@ export const simpleRefreshReserve = (
 
 /**
  * Refresh a generic Kamino obligation
- * @param program 
- * @param market 
- * @param obligation 
- * @returns 
+ * @param program
+ * @param market
+ * @param obligation
+ * @returns
  */
 export const simpleRefreshObligation = (
   program: Program<KaminoLending>,
   market: PublicKey,
-  obligation: PublicKey
+  obligation: PublicKey,
+  remaining: PublicKey[] = []
 ) => {
+  const accMeta: AccountMeta[] = remaining.map((pubkey) => ({
+    pubkey,
+    isSigner: false,
+    isWritable: false,
+  }));
+
   const ix = program.methods
     .refreshObligation()
     .accounts({
       lendingMarket: market,
       obligation: obligation,
     })
+    .remainingAccounts(accMeta)
     .instruction();
 
   return ix;

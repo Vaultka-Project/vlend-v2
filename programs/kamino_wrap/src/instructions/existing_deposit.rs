@@ -7,7 +7,7 @@ use solana_program::{instruction::Instruction, program::invoke_signed};
 
 use super::deposit_ix_data;
 
-pub fn fresh_deposit(ctx: Context<FreshDeposit>, liquidity_amount: u64) -> Result<()> {
+pub fn existing_deposit(ctx: Context<ExistingDeposit>, liquidity_amount: u64) -> Result<()> {
     {
         // Note: clone() is required here to avoid re-borrowing as mut of `AccountMeta::new`
         let user_account = ctx.accounts.user_account.load()?.clone();
@@ -48,7 +48,7 @@ pub fn fresh_deposit(ctx: Context<FreshDeposit>, liquidity_amount: u64) -> Resul
 }
 
 fn deposit_cpi_ix(
-    ctx: &Context<FreshDeposit>,
+    ctx: &Context<ExistingDeposit>,
     program_id: Pubkey,
     liquidity_amount: u64,
 ) -> Result<Instruction> {
@@ -83,7 +83,7 @@ fn deposit_cpi_ix(
 }
 
 #[derive(Accounts)]
-pub struct FreshDeposit<'info> {
+pub struct ExistingDeposit<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 

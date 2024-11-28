@@ -1,7 +1,12 @@
-// TODO the Price struct has changed a bit since this copy-pasta was generated some time ago,
-// however price and ema price/expo/conf are in the same spot, so if those are all you need, there's
-// no need to update (all modern changes are backwards compatible, new versions of Pyth on-chain
-// will still deserialize the price data)
+// After having been written by Jet circa 2019, this Mock of Pyth was significantly outdated for
+// some time (all modern changes are backwards compatible, so new versions of Pyth on-chain would
+// still deserialize the price data).
+//
+// Updated in 2021 by Psy and in 2024 by Mrgn (via ChatGPT) to the newest layout, but many of the
+// fields are likely straight up incorrect
+//
+// AT LEAST price, twap, and timestamp will likely serialize correctly! load_price_account and
+// get_price_unchecked should work!
 
 // Adapated from PsyLend, Jet labs, etc
 import { Program, Wallet, workspace } from "@coral-xyz/anchor";
@@ -11,27 +16,32 @@ import { Mocks } from "../../target/types/mocks";
 /** Copied from `@pythnetwork/client": "^2.19.0"`, used as a discriminator */
 const Magic = 2712847316;
 
-/**
- * As long as it's large enough, any size is fine.
- */
 const PYTH_ACCOUNT_SIZE = 3312;
 
 const mockProgram: Program<Mocks> = workspace.Mocks;
 
 export interface Price {
   version?: number;
-  type?: number;
+  atype?: number;
   size?: number;
-  priceType?: string;
-  exponent?: number;
-  currentSlot?: bigint;
+  ptype?: number; // PriceType: 0 for Unknown, 1 for Price
+  expo?: number;
+  num?: number;
+  numQt?: number;
+  lastSlot?: bigint;
   validSlot?: bigint;
-  twap?: Ema;
-  productAccountKey?: PublicKey;
-  nextPriceAccountKey?: PublicKey;
-  aggregatePriceUpdaterAccountKey?: PublicKey;
-  aggregatePriceInfo?: PriceInfo;
-  priceComponents?: PriceComponent[];
+  emaPrice?: Rational;
+  emaConf?: Rational;
+  timestamp?: bigint;
+  minPub?: number;
+  prod?: PublicKey;
+  next?: PublicKey;
+  prevSlot?: bigint;
+  prevPrice?: bigint;
+  prevConf?: bigint;
+  prevTimestamp?: bigint;
+  agg?: PriceInfo;
+  comp?: PriceComponent[];
 }
 
 export interface PriceInfo {
@@ -48,18 +58,10 @@ export interface PriceComponent {
   latest?: PriceInfo;
 }
 
-export interface Product {
-  version?: number;
-  atype?: number;
-  size?: number;
-  priceAccount?: PublicKey;
-  attributes?: Record<string, string>;
-}
-
-export interface Ema {
-  valueComponent?: bigint;
-  numerator?: bigint;
-  denominator?: bigint;
+export interface Rational {
+  val?: bigint;
+  numer?: bigint;
+  denom?: bigint;
 }
 
 /**
@@ -68,15 +70,6 @@ export interface Ema {
  * @returns
  */
 export const createPriceAccount = async (wallet: Wallet) => {
-  return createMockAccount(mockProgram, PYTH_ACCOUNT_SIZE, wallet);
-};
-
-/**
- * Creates a Pyth product account
- * @param wallet - pays the TX fee
- * @returns
- */
-export const createProductAccount = async (wallet: Wallet) => {
   return createMockAccount(mockProgram, PYTH_ACCOUNT_SIZE, wallet);
 };
 
@@ -93,60 +86,59 @@ export const updatePriceAccount = async (
 ) => {
   const buf = Buffer.alloc(512);
   const d = getPythPriceDataWithDefaults(data);
-  d.aggregatePriceInfo = getPythPriceInfoWithDefaults(d.aggregatePriceInfo);
-  d.twap = getPythEmaWithDefaults(d.twap);
+  d.agg = getPythPriceInfoWithDefaults(d.agg);
+  d.emaPrice = getRationalWithDefaults(d.emaPrice);
+  d.emaConf = getRationalWithDefaults(d.emaConf);
 
   writePriceBuffer(buf, 0, d);
   await storeMockAccount(mockProgram, wallet, account, 0, buf);
 };
 
-/**
- * Update a Pyth product account with new data
- * @param account The account to update
- * @param data The new data to place in the account
- * @param wallet - pays tx fee
- */
-export const updateProductAccount = async (
-  account: Keypair,
-  data: Product,
-  wallet: Wallet
-) => {
-  const buf = Buffer.alloc(512);
-  const d = getProductWithDefaults(data);
-
-  writeProductBuffer(buf, 0, d);
-  await storeMockAccount(mockProgram, wallet, account, 0, buf);
-};
-
 export const getPythPriceDataWithDefaults = ({
   version = 2,
-  type = 3, // AccountType::Price
+  atype = 3, // AccountType::Price
   size = PYTH_ACCOUNT_SIZE,
-  priceType = "price",
-  exponent = 0,
-  currentSlot = BigInt(0),
+  ptype = 1, // PriceType::Price
+  expo = 0,
+  num = 0,
+  numQt = 0,
+  lastSlot = BigInt(0),
   validSlot = BigInt(0),
-  twap = {},
-  productAccountKey = PublicKey.default,
-  nextPriceAccountKey = PublicKey.default,
-  aggregatePriceUpdaterAccountKey = PublicKey.default,
-  aggregatePriceInfo = {},
-  priceComponents = [],
+  emaPrice = {},
+  emaConf = {},
+  timestamp = BigInt(Math.round(Date.now() / 1000)),
+  minPub = 1,
+  prod = PublicKey.default,
+  next = PublicKey.default,
+  prevSlot = BigInt(0),
+  prevPrice = BigInt(0),
+  prevConf = BigInt(0),
+  prevTimestamp = BigInt(0),
+  agg = {},
+  comp = [],
 }: Price) => {
   return {
     version,
-    type,
+    atype,
     size,
-    priceType,
-    exponent,
-    currentSlot,
+    ptype,
+    expo,
+    num,
+    numQt,
+    lastSlot,
     validSlot,
-    twap,
-    productAccountKey,
-    nextPriceAccountKey,
-    aggregatePriceUpdaterAccountKey,
-    aggregatePriceInfo,
-    priceComponents,
+    emaPrice,
+    emaConf,
+    timestamp,
+    minPub,
+    prod,
+    next,
+    prevSlot,
+    prevPrice,
+    prevConf,
+    prevTimestamp,
+    agg,
+    comp,
   };
 };
 
@@ -155,7 +147,7 @@ export const getPythPriceInfoWithDefaults = ({
   conf = BigInt(0),
   status = 1, // PriceStatus::Trading
   corpAct = 0, // CorpAction::NoCorpAct
-  pubSlot = BigInt(Number.MAX_SAFE_INTEGER), // Pubslot has to be newer than current slot.
+  pubSlot = BigInt(0),
 }: PriceInfo) => {
   return {
     price,
@@ -166,16 +158,51 @@ export const getPythPriceInfoWithDefaults = ({
   };
 };
 
-export const getPythEmaWithDefaults = ({
-  valueComponent = BigInt(0),
-  denominator = BigInt(0),
-  numerator = BigInt(0),
-}: Ema) => {
+export const getRationalWithDefaults = ({
+  val = BigInt(0),
+  numer = BigInt(0),
+  denom = BigInt(1),
+}: Rational) => {
   return {
-    valueComponent,
-    denominator,
-    numerator,
+    val,
+    numer,
+    denom,
   };
+};
+
+export const writePriceBuffer = (buf: Buffer, offset: number, data: Price) => {
+  buf.writeUInt32LE(Magic, offset + 0); // magic
+  buf.writeUInt32LE(data.version, offset + 4); // ver
+  buf.writeUInt32LE(data.atype, offset + 8); // type
+  buf.writeUInt32LE(data.size, offset + 12); // size
+  buf.writeUInt32LE(data.ptype, offset + 16); // price type
+  buf.writeInt32LE(data.expo, offset + 20); // expo
+  buf.writeUInt32LE(data.num, offset + 24); // num components
+  buf.writeUInt32LE(data.numQt, offset + 28); // num quoters
+  buf.writeBigUInt64LE(data.lastSlot, offset + 32); // last valid slot
+  buf.writeBigUInt64LE(data.validSlot, offset + 40); // valid slot
+  buf.writeBigInt64LE(data.emaPrice.val, offset + 48); // ema price val
+  buf.writeBigInt64LE(data.emaPrice.numer, offset + 56); // ema price numerator
+  buf.writeBigInt64LE(data.emaPrice.denom, offset + 64); // ema price denominator
+  buf.writeBigInt64LE(data.emaConf.val, offset + 72); // ema conf val
+  buf.writeBigInt64LE(data.emaConf.numer, offset + 80); // ema conf numerator
+  buf.writeBigInt64LE(data.emaConf.denom, offset + 88); // ema conf denominator
+  buf.writeBigInt64LE(data.timestamp, offset + 96); // timestamp
+  buf.writeUInt8(data.minPub, offset + 104); // min publishers
+  writePublicKeyBuffer(buf, offset + 112, data.prod);
+  writePublicKeyBuffer(buf, offset + 144, data.next);
+  buf.writeBigUInt64LE(data.prevSlot, offset + 176); // previous valid slot
+  buf.writeBigInt64LE(data.prevPrice, offset + 184); // previous price
+  buf.writeBigUInt64LE(data.prevConf, offset + 192); // previous confidence
+  buf.writeBigInt64LE(data.prevTimestamp, offset + 200); // previous timestamp
+
+  writePriceInfoBuffer(buf, offset + 208, data.agg);
+  let pos = offset + 240;
+
+  for (const component of data.comp) {
+    writePriceComponentBuffer(buf, pos, component);
+    pos += 96;
+  }
 };
 
 export const writePublicKeyBuffer = (
@@ -205,86 +232,6 @@ export const writePriceComponentBuffer = (
 ) => {
   component.publisher.toBuffer().copy(buf, offset);
   writePriceInfoBuffer(buf, offset + 32, component.agg);
-  writePriceInfoBuffer(buf, offset + 64, component.latest);
-};
-
-export const writePriceBuffer = (buf: Buffer, offset: number, data: Price) => {
-  buf.writeUInt32LE(Magic, offset + 0); //magic
-  buf.writeUInt32LE(data.version, offset + 4); //ver
-  buf.writeUInt32LE(data.type, offset + 8); //type
-  buf.writeUInt32LE(data.size, offset + 12); //size
-  buf.writeUInt32LE(1, offset + 16); //price type
-  buf.writeInt32LE(data.exponent, offset + 20); //exp
-  buf.writeUInt32LE(data.priceComponents.length, offset + 24); //price comps
-  buf.writeBigUInt64LE(data.currentSlot, offset + 32); //curr slot
-  buf.writeBigUInt64LE(data.validSlot, offset + 40); //valid slot
-  buf.writeBigInt64LE(data.twap.valueComponent, offset + 48); //ema
-  buf.writeBigInt64LE(data.twap.numerator, offset + 56); //ema
-  buf.writeBigInt64LE(data.twap.denominator, offset + 64); //ema
-  writePublicKeyBuffer(buf, offset + 112, data.productAccountKey);
-  writePublicKeyBuffer(buf, offset + 144, data.nextPriceAccountKey);
-  writePublicKeyBuffer(buf, offset + 176, data.aggregatePriceUpdaterAccountKey);
-
-  writePriceInfoBuffer(buf, 208, data.aggregatePriceInfo);
-
-  let pos = offset + 240;
-  for (const component of data.priceComponents) {
-    writePriceComponentBuffer(buf, pos, component);
-    pos += 96;
-  }
-};
-
-export const getProductWithDefaults = ({
-  version = 2,
-  atype = 2,
-  size = 0,
-  priceAccount = PublicKey.default,
-  attributes = {},
-}: Product) => {
-  return {
-    version,
-    atype,
-    size,
-    priceAccount,
-    attributes,
-  };
-};
-
-export const writeProductBuffer = (
-  buf: Buffer,
-  offset: number,
-  product: Product
-) => {
-  let accountSize = product.size;
-
-  if (!accountSize) {
-    accountSize = 48;
-
-    for (const key in product.attributes) {
-      accountSize += 1 + key.length;
-      accountSize += 1 + product.attributes[key].length;
-    }
-  }
-
-  buf.writeUInt32LE(Magic, offset + 0);
-  buf.writeUInt32LE(product.version, offset + 4);
-  buf.writeUInt32LE(product.atype, offset + 8);
-  buf.writeUInt32LE(accountSize, offset + 12);
-
-  writePublicKeyBuffer(buf, offset + 16, product.priceAccount);
-
-  let pos = offset + 48;
-
-  for (const key in product.attributes) {
-    buf.writeUInt8(key.length, pos);
-    buf.write(key, pos + 1);
-
-    pos += 1 + key.length;
-
-    const value = product.attributes[key];
-    buf.writeUInt8(value.length, pos);
-    buf.write(value, pos + 1);
-  }
 };
 
 /**
@@ -294,10 +241,10 @@ export const writeProductBuffer = (
  * @param wsolDecimals
  * @param usdcPrice
  * @param usdcDecimals
- * @param tokenAPrice:
- * @param tokenADecimals:
- * @param tokenBPrice:
- * @param tokenBDecimals:
+ * @param tokenAPrice
+ * @param tokenADecimals
+ * @param tokenBPrice
+ * @param tokenBDecimals
  * @param verbose
  * @param skips - set to true to skip sending txes, which makes tests run faster if you don't need
  * those oracles.
@@ -321,6 +268,8 @@ export const setupPythOracles = async (
     b: boolean;
   }
 ) => {
+  const now = Math.round(Date.now() / 1000);
+
   let wsolPythOracle = await createPriceAccount(wallet);
   let price = BigInt(wsolPrice * 10 ** wsolDecimals);
   if (skips && skips.wsol) {
@@ -329,13 +278,16 @@ export const setupPythOracles = async (
     await updatePriceAccount(
       wsolPythOracle,
       {
-        exponent: -wsolDecimals,
-        aggregatePriceInfo: {
+        expo: -wsolDecimals,
+        timestamp: BigInt(now),
+        agg: {
           price: price,
           conf: price / BigInt(100), // 1% of the price
         },
-        twap: {
-          valueComponent: price,
+        emaPrice: {
+          val: price,
+          numer: price,
+          denom: BigInt(1),
         },
       },
       wallet
@@ -350,13 +302,16 @@ export const setupPythOracles = async (
     await updatePriceAccount(
       usdcPythOracle,
       {
-        exponent: -usdcDecimals,
-        aggregatePriceInfo: {
+        expo: -usdcDecimals,
+        timestamp: BigInt(now),
+        agg: {
           price: price,
           conf: price / BigInt(100), // 1% of the price
         },
-        twap: {
-          valueComponent: price,
+        emaPrice: {
+          val: price,
+          numer: price,
+          denom: BigInt(1),
         },
       },
       wallet
@@ -371,13 +326,16 @@ export const setupPythOracles = async (
     await updatePriceAccount(
       tokenAPythOracle,
       {
-        exponent: -tokenADecimals,
-        aggregatePriceInfo: {
+        expo: -tokenADecimals,
+        timestamp: BigInt(now),
+        agg: {
           price: price,
           conf: price / BigInt(100), // 1% of the price
         },
-        twap: {
-          valueComponent: price,
+        emaPrice: {
+          val: price,
+          numer: price,
+          denom: BigInt(1),
         },
       },
       wallet
@@ -392,13 +350,16 @@ export const setupPythOracles = async (
     await updatePriceAccount(
       tokenBPythOracle,
       {
-        exponent: -tokenBDecimals,
-        aggregatePriceInfo: {
+        expo: -tokenBDecimals,
+        timestamp: BigInt(now),
+        agg: {
           price: price,
           conf: price / BigInt(100), // 1% of the price
         },
-        twap: {
-          valueComponent: price,
+        emaPrice: {
+          val: price,
+          numer: price,
+          denom: BigInt(1),
         },
       },
       wallet

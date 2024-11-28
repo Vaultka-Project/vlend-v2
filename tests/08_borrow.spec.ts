@@ -43,18 +43,21 @@ describe("Borrow funds", () => {
   );
 
   it("Oracle data refreshes", async () => {
+    const now = Math.round(Date.now() / 1000);
     const usdcPrice = BigInt(oracles.usdcPrice * 10 ** oracles.usdcDecimals);
     await updatePriceAccount(
       oracles.usdcOracle,
       {
-        exponent: -oracles.usdcDecimals,
-        aggregatePriceInfo: {
+        expo: -oracles.usdcDecimals,
+        timestamp: BigInt(now),
+        agg: {
           price: usdcPrice,
           conf: usdcPrice / BigInt(100), // 1% of the price
         },
-        twap: {
-          // aka ema
-          valueComponent: usdcPrice,
+        emaPrice: {
+          val: usdcPrice,
+          numer: usdcPrice,
+          denom: BigInt(1),
         },
       },
       wallet
@@ -66,14 +69,16 @@ describe("Borrow funds", () => {
     await updatePriceAccount(
       oracles.tokenAOracle,
       {
-        exponent: -oracles.tokenADecimals,
-        aggregatePriceInfo: {
+        expo: -oracles.tokenADecimals,
+        timestamp: BigInt(now),
+        agg: {
           price: tokenAPrice,
           conf: tokenAPrice / BigInt(100), // 1% of the price
         },
-        twap: {
-          // aka ema
-          valueComponent: tokenAPrice,
+        emaPrice: {
+          val: tokenAPrice,
+          numer: tokenAPrice,
+          denom: BigInt(1),
         },
       },
       wallet

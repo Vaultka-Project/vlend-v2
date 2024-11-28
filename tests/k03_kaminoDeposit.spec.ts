@@ -24,6 +24,7 @@ import {
   simpleRefreshReserve,
 } from "./utils/kamino-utils";
 import { createMintToInstruction } from "@solana/spl-token";
+import { updatePriceAccount } from "./utils/pyth_mocks";
 
 describe("Deposit to Kamino reserve", () => {
   const provider = getProvider() as AnchorProvider;
@@ -98,6 +99,78 @@ describe("Deposit to Kamino reserve", () => {
           reserveCollateralMint: collateralMint,
           reserveDestinationDepositCollateral: collateralVault,
           userSourceLiquidity: users[0].usdcAccount,
+          placeholderUserDestinationCollateral: null,
+          collateralTokenProgram: TOKEN_PROGRAM_ID,
+          liquidityTokenProgram: TOKEN_PROGRAM_ID,
+          instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY,
+        })
+        .instruction()
+    );
+
+    await users[0].mrgnProgram.provider.sendAndConfirm(tx);
+  });
+
+  it("(user 0) Withdraw 10% of USDC from Kamino reserve - happy path", async () => {
+    const market = kaminoAccounts.get(MARKET);
+    const usdcReserve = kaminoAccounts.get(USDC_RESERVE);
+    const reserveAcc: Reserve = Reserve.decode(
+      (await provider.connection.getAccountInfo(usdcReserve)).data
+    );
+    const liquidityMint = reserveAcc.liquidity.mintPubkey;
+    const reserveLiquiditySupply = reserveAcc.liquidity.supplyVault;
+    const collateralMint = reserveAcc.collateral.mintPubkey;
+    const collateralVault = reserveAcc.collateral.supplyVault;
+
+    const [lendingMarketAuthority] = lendingMarketAuthPda(
+      market,
+      klendProgram.programId
+    );
+    const obligation = users[0].accounts.get(KAMINO_OBLIGATION);
+
+    const liquidityAmount = new BN(10_000);
+
+    const usdcPrice = BigInt(oracles.usdcPrice * 10 ** oracles.usdcDecimals);
+    const now = Math.round(Date.now() / 1000);
+    await updatePriceAccount(
+      oracles.usdcOracle,
+      {
+        expo: -oracles.usdcDecimals,
+        timestamp: BigInt(now),
+        agg: {
+          price: usdcPrice,
+          conf: usdcPrice / BigInt(100), // 1% of the price
+        },
+        emaPrice: {
+          val: usdcPrice,
+          numer: usdcPrice,
+          denom: BigInt(1),
+        },
+      },
+      wallet
+    );
+
+    let tx = new Transaction();
+    tx.add(
+      await simpleRefreshReserve(
+        klendProgram,
+        usdcReserve,
+        market,
+        oracles.usdcOracle.publicKey
+      ),
+      await simpleRefreshObligation(klendProgram, market, obligation),
+      await klendProgram.methods
+        .withdrawObligationCollateralAndRedeemReserveCollateral(liquidityAmount)
+        .accounts({
+          owner: users[0].wallet.publicKey,
+          obligation: obligation,
+          lendingMarket: market,
+          lendingMarketAuthority: lendingMarketAuthority,
+          withdrawReserve: usdcReserve,
+          reserveLiquidityMint: liquidityMint,
+          reserveSourceCollateral: collateralVault,
+          reserveCollateralMint: collateralMint,
+          reserveLiquiditySupply: reserveLiquiditySupply,
+          userDestinationLiquidity: users[0].usdcAccount,
           placeholderUserDestinationCollateral: null,
           collateralTokenProgram: TOKEN_PROGRAM_ID,
           liquidityTokenProgram: TOKEN_PROGRAM_ID,

@@ -27,12 +27,15 @@ import {
 import { deriveKwrapUser } from "./utils/pdas";
 import { KWRAP_OBLIGATION, KWRAP_USER_ACCOUNT } from "./utils/mocks";
 import { freshDeposit } from "./utils/kwrap-instructions";
-import { lendingMarketAuthPda } from "@kamino-finance/klend-sdk";
+import { lendingMarketAuthPda, Obligation } from "@kamino-finance/klend-sdk";
 import { TOKEN_PROGRAM_ID, createTransferInstruction } from "@solana/spl-token";
 import {
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddressSync,
 } from "@mrgnlabs/mrgn-common";
+import { assertBNApproximately, assertKeysEqual } from "./utils/genericTests";
+import { Fraction } from "@kamino-finance/klend-sdk/dist/classes/fraction";
+import Decimal from "decimal.js";
 
 describe("Deposit from Kamino account", () => {
   const provider = getProvider() as AnchorProvider;
@@ -111,7 +114,40 @@ describe("Deposit from Kamino account", () => {
 
     await users[0].kwrapProgram.provider.sendAndConfirm(tx);
 
-    // TODO assert balance changes
+    const obAcc = Obligation.decode(
+      (await klendProgram.provider.connection.getAccountInfo(obligation)).data
+    );
+    assertKeysEqual(obAcc.deposits[0].depositReserve, reserveKey);
+    assertBNApproximately(obAcc.deposits[0].depositedAmount, amt, 1000);
+    // Note: the market value of the asset defaults to zero until the first post-deposit refresh
+    assertBNApproximately(obAcc.deposits[0].marketValueSf, 0, 100_000);
+
+    await users[0].kwrapProgram.provider.sendAndConfirm(
+      new Transaction().add(
+        await simpleRefreshReserve(
+          klendProgram,
+          reserveKey,
+          market,
+          oracles.usdcOracle.publicKey
+        ),
+        await simpleRefreshObligation(klendProgram, market, obligation, [
+          reserveKey,
+        ])
+      )
+    );
+
+    // Following a refresh, the obligation is now valued as expected
+    const obAccAfter = Obligation.decode(
+      (await klendProgram.provider.connection.getAccountInfo(obligation)).data
+    );
+    let expected = Fraction.fromDecimal(
+      new Decimal(oracles.usdcPrice * depositAmount)
+    );
+    assertBNApproximately(
+      obAccAfter.deposits[0].marketValueSf,
+      expected.valueSf,
+      100_000
+    );
   });
 
   // TODO deposit assets from existing Kamino acc

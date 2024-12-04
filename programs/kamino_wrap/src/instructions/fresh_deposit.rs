@@ -14,28 +14,28 @@ pub fn fresh_deposit(ctx: Context<FreshDeposit>, liquidity_amount: u64) -> Resul
 
         let ix: Instruction = deposit_cpi_ix(&ctx, KAMINO_ID, liquidity_amount)?;
 
+        let accs = &ctx.accounts;
         invoke_signed(
             &ix,
             &[
-                ctx.accounts.user_account.to_account_info(), // obligation owner (signer/fee payer)
-                ctx.accounts.obligation.to_account_info(),   // obligation
-                ctx.accounts.lending_market.to_account_info(), // market
-                ctx.accounts.lending_market_authority.to_account_info(), // market auth
+                accs.user_account.to_account_info(), // obligation owner (signer/fee payer)
+                accs.obligation.to_account_info(),   // obligation
+                accs.lending_market.to_account_info(), // market
+                accs.lending_market_authority.to_account_info(), // market auth
                 // **** reserve accounts *****
-                ctx.accounts.reserve.to_account_info(),
-                ctx.accounts.reserve_liquidity_mint.to_account_info(),
-                ctx.accounts.reserve_liquidity_supply.to_account_info(),
-                ctx.accounts.reserve_collateral_mint.to_account_info(),
-                ctx.accounts
-                    .reserve_destination_deposit_collateral
+                accs.reserve.to_account_info(),
+                accs.reserve_liquidity_mint.to_account_info(),
+                accs.reserve_liquidity_supply.to_account_info(),
+                accs.reserve_collateral_mint.to_account_info(),
+                accs.reserve_destination_deposit_collateral
                     .to_account_info(),
                 // ***** end reserve accounts *****
-                ctx.accounts.user_source_liquidity.to_account_info(), // user source ATA
-                ctx.accounts.kamino_program.to_account_info(),        // placeholder
+                accs.user_source_liquidity.to_account_info(), // user source ATA
+                accs.kamino_program.to_account_info(),        // placeholder
                 // Program accounts
-                ctx.accounts.collateral_token_program.to_account_info(),
-                ctx.accounts.liquidity_token_program.to_account_info(),
-                ctx.accounts.instruction_sysvar_account.to_account_info(),
+                accs.collateral_token_program.to_account_info(),
+                accs.liquidity_token_program.to_account_info(),
+                accs.instruction_sysvar_account.to_account_info(),
             ],
             &[user_account_signer_seeds!(user_account)],
         )?;
@@ -52,30 +52,28 @@ fn deposit_cpi_ix(
     program_id: Pubkey,
     liquidity_amount: u64,
 ) -> Result<Instruction> {
+    let accs = &ctx.accounts;
     let instruction = Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(ctx.accounts.user_account.key(), true), // obligation owner (signer)
-            AccountMeta::new(ctx.accounts.obligation.key(), false),  // obligation
-            AccountMeta::new_readonly(ctx.accounts.lending_market.key(), false), // lending market
-            AccountMeta::new_readonly(ctx.accounts.lending_market_authority.key(), false), // market auth
+            AccountMeta::new(accs.user_account.key(), true), // obligation owner (signer)
+            AccountMeta::new(accs.obligation.key(), false),  // obligation
+            AccountMeta::new_readonly(accs.lending_market.key(), false), // lending market
+            AccountMeta::new_readonly(accs.lending_market_authority.key(), false), // market auth
             // **** reserve accounts *****
-            AccountMeta::new(ctx.accounts.reserve.key(), false),
-            AccountMeta::new(ctx.accounts.reserve_liquidity_mint.key(), false),
-            AccountMeta::new(ctx.accounts.reserve_liquidity_supply.key(), false),
-            AccountMeta::new(ctx.accounts.reserve_collateral_mint.key(), false),
-            AccountMeta::new(
-                ctx.accounts.reserve_destination_deposit_collateral.key(),
-                false,
-            ),
+            AccountMeta::new(accs.reserve.key(), false),
+            AccountMeta::new(accs.reserve_liquidity_mint.key(), false),
+            AccountMeta::new(accs.reserve_liquidity_supply.key(), false),
+            AccountMeta::new(accs.reserve_collateral_mint.key(), false),
+            AccountMeta::new(accs.reserve_destination_deposit_collateral.key(), false),
             // ***** end reserve accounts *****
-            AccountMeta::new(ctx.accounts.user_source_liquidity.key(), false), // users's source ATA
+            AccountMeta::new(accs.user_source_liquidity.key(), false), // users's source ATA
             // Note: using program's id as a placeholder
-            AccountMeta::new_readonly(ctx.accounts.kamino_program.key(), false), // (placeholder)
+            AccountMeta::new_readonly(accs.kamino_program.key(), false), // (placeholder)
             // Program accounts
-            AccountMeta::new_readonly(ctx.accounts.collateral_token_program.key(), false),
-            AccountMeta::new_readonly(ctx.accounts.liquidity_token_program.key(), false),
-            AccountMeta::new_readonly(ctx.accounts.instruction_sysvar_account.key(), false),
+            AccountMeta::new_readonly(accs.collateral_token_program.key(), false),
+            AccountMeta::new_readonly(accs.liquidity_token_program.key(), false),
+            AccountMeta::new_readonly(accs.instruction_sysvar_account.key(), false),
         ],
         data: deposit_ix_data(liquidity_amount),
     };
@@ -87,6 +85,7 @@ pub struct FreshDeposit<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
+    /// User kwrap account
     #[account(
         mut,
         has_one = user,
@@ -99,7 +98,7 @@ pub struct FreshDeposit<'info> {
     )]
     pub user_account: AccountLoader<'info, UserAccount>,
 
-    /// Reserve to deposit into, must be under the given market, and owned by user_account, the
+    /// Obligation to deposit into, must be under the given market, and owned by `user_account`, the
     /// user's kwrap account
     /// CHECK: validated in CPI
     #[account(mut)]
@@ -130,7 +129,7 @@ pub struct FreshDeposit<'info> {
     /// CHECK: validated in CPI
     #[account(mut)]
     pub reserve_destination_deposit_collateral: UncheckedAccount<'info>,
-    /// The users's ATA for the source asset
+    /// An ATA for `reserve_liquidity_mint` owned by `user_account`
     /// CHECK: validated in CPI
     #[account(mut)]
     pub user_source_liquidity: UncheckedAccount<'info>,

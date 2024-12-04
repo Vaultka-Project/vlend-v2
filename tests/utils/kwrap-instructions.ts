@@ -124,9 +124,67 @@ export const freshDeposit = (
       reserveLiquidityMint: args.reserveLiquidityMint,
       reserveLiquiditySupply: args.reserveLiquiditySupply,
       reserveCollateralMint: args.reserveCollateralMint,
-      reserveDestinationDepositCollateral: args.reserveDestinationDepositCollateral,
+      reserveDestinationDepositCollateral:
+        args.reserveDestinationDepositCollateral,
       userSourceLiquidity: args.userSourceLiquidity,
       placeholder: args.placeholderUserDestinationCollateral || null,
+      // kaminoProgram: (hard coded)
+      // collateralTokenProgram: // (hard coded to Token classic)
+      liquidityTokenProgram: args.liquidityTokenProgram,
+      // instructionSysvarAccount: // (hard coded)
+    })
+    .instruction();
+
+  return ix;
+};
+
+export type ExistingDepositArgs = {
+  /** In native decimals */
+  liquidityAmount: BN;
+  userAccount: PublicKey;
+  /** kwrapped obligation (owned by userAccount) */
+  obligation: PublicKey;
+  /** users's obligation (owned by user) */
+  userObligation: PublicKey;
+  lendingMarket: PublicKey;
+  lendingMarketAuthority: PublicKey;
+  reserve: PublicKey;
+  reserveLiquidityMint: PublicKey;
+  reserveLiquiditySupply: PublicKey;
+  reserveCollateralMint: PublicKey;
+  reserveDestinationDepositCollateral: PublicKey;
+  /** `userAccount`'s ATA for `reserveLiquidityMint` */
+  userSourceLiquidity: PublicKey;
+  /** `users`'s ATA for `reserveLiquidityMint` */
+  userDestinationLiquidity: PublicKey;
+  liquidityTokenProgram: PublicKey;
+  /** Currently does nothing */
+  placeholderUserDestinationCollateral?: PublicKey;
+};
+
+export const existingDeposit = (
+  program: Program<KaminoWrap>,
+  args: ExistingDepositArgs
+) => {
+  const ix = program.methods
+    .existingDeposit(args.liquidityAmount)
+    .accounts({
+      // user (implied from userAccount), must sign
+      userAccount: args.userAccount,
+      obligation: args.obligation,
+      userObligation: args.userObligation,
+      lendingMarket: args.lendingMarket,
+      lendingMarketAuthority: args.lendingMarketAuthority,
+      reserve: args.reserve,
+      reserveLiquidityMint: args.reserveLiquidityMint,
+      reserveLiquiditySupply: args.reserveLiquiditySupply,
+      reserveCollateralMint: args.reserveCollateralMint,
+      reserveDestinationDepositCollateral:
+        args.reserveDestinationDepositCollateral,
+      userSourceLiquidity: args.userSourceLiquidity,
+      userDestinationLiquidity: args.userDestinationLiquidity,
+      placeholder: args.placeholderUserDestinationCollateral || null,
+      // kaminoProgram: (hard coded)
       // collateralTokenProgram: // (hard coded to Token classic)
       liquidityTokenProgram: args.liquidityTokenProgram,
       // instructionSysvarAccount: // (hard coded)

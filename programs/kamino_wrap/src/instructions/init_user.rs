@@ -30,6 +30,8 @@ pub struct InitUser<'info> {
         init,
         seeds = [
             user.key().as_ref(),
+            // Support for nonce use in the future, if multiple user accounts for a single wallet are ever desired.
+            &(0 as u8).to_le_bytes(),
             USER_ACCOUNT_SEED.as_bytes()
         ],
         bump,

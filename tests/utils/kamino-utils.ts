@@ -40,6 +40,9 @@ export const simpleRefreshReserve = (
  * @param program
  * @param market
  * @param obligation
+ * @param remaining - pack the reserves used in this obligation, in the order they appear, starting
+ * with lending reserves. For example, a user lending USDC at index 0, SOL at index 1, borrowing
+ * BONK at index 0, pass [USDC, SOL, BONK] reserves
  * @returns
  */
 export const simpleRefreshObligation = (

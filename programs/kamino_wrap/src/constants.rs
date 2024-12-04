@@ -1,7 +1,19 @@
 use anchor_lang::prelude::*;
 
-
 pub const USER_ACCOUNT_SEED: &str = "user_account";
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "devnet")] {
+        pub const MRGN_ID: Pubkey = pubkey!("neetcne3Ctrrud7vLdt2ypMm21gZHGN2mCmqWaMVcBQ");
+    } else if #[cfg(feature = "mainnet-beta")] {
+        pub const MRGN_ID: Pubkey = pubkey!("MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA");
+    } else if #[cfg(feature = "staging")] {
+        pub const MRGN_ID: Pubkey = pubkey!("stag8sTKds2h4KzjUw3zKTsxbqvT4XKHdaR9X9E6Rct");
+    } else {
+        // localnet
+        pub const MRGN_ID: Pubkey = pubkey!("2jGhuVUuy3umdzByFx8sNWUAaf5vaeuDm78RDPEnhrMr");
+    }
+}
 
 cfg_if::cfg_if! {
     // Note: not deployed to devnet, deploy if needed...

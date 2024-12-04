@@ -157,7 +157,9 @@ describe("Deposit to Kamino reserve", () => {
         market,
         oracles.usdcOracle.publicKey
       ),
-      await simpleRefreshObligation(klendProgram, market, obligation),
+      await simpleRefreshObligation(klendProgram, market, obligation, [
+        usdcReserve,
+      ]),
       await klendProgram.methods
         .withdrawObligationCollateralAndRedeemReserveCollateral(liquidityAmount)
         .accounts({

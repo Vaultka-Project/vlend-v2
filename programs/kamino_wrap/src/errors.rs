@@ -6,4 +6,6 @@ pub enum ErrorCode {
     MathError, // 6000
     #[msg("Passed a bad LUT key: did you remember to use the kwrap account to derive?")]
     LutKeyInvalid, // 6001
+    #[msg("No more obligation slots available, create a new user account or close an obligation.")]
+    ObligationEntriesFull, // 6001
 }

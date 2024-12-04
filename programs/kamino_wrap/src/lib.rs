@@ -14,8 +14,12 @@ declare_id!("4Rd33Yfzm6BVWeTRjBfKpni4eVJuFdbyupngTHCsVnyU");
 pub mod kamino_wrap {
     use super::*;
 
-    pub fn fresh_deposit(ctx: Context<FreshDeposit>, placeholder: u64) -> Result<()> {
-        instructions::fresh_deposit(ctx, placeholder)
+    pub fn fresh_deposit(ctx: Context<FreshDeposit>, amount: u64) -> Result<()> {
+        instructions::fresh_deposit(ctx, amount)
+    }
+
+    pub fn existing_deposit(ctx: Context<ExistingDeposit>, amount: u64) -> Result<()> {
+        instructions::existing_deposit(ctx, amount)
     }
 
     pub fn init_user(ctx: Context<InitUser>) -> Result<()> {

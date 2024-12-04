@@ -35,7 +35,7 @@ pub fn init_obligation(ctx: Context<InitObligation>, tag: u8, id: u8) -> Result<
     user_account.add_market_info(
         &ctx.accounts.lending_market.key(),
         &ctx.accounts.obligation.key(),
-    );
+    )?;
 
     Ok(())
 }

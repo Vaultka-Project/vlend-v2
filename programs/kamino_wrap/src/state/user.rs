@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use bytemuck::{Pod, Zeroable};
 
+use crate::errors::ErrorCode;
 use crate::{assert_struct_align, assert_struct_size};
 
 assert_struct_size!(UserAccount, 1432);
@@ -25,12 +26,11 @@ pub struct UserAccount {
     // Reserved for future keys
     _reserved0: [u8; 128],
 
-    // ??? Make this authoritative?
     /// At-a-glance information about markets this account has positions in.
     /// * Not sorted in any particular order
-    /// * Non-authoritative. Kamino has 5 "primary" markets as of November 2024 (Jito, JLP, Main,
-    ///   Altcoin, Ethena). If a user has filled all of their slots, they can still create new
-    ///   obligations for future markets, but they will not appear here
+    /// * Kamino has 5 "primary" markets as of November 2024 (Jito, JLP, Main, Altcoin, Ethena). It
+    ///   is very unlikely that the vast majority of users will use all 5 slots.
+    /// * If full, adding a new obligation will error. Create a new account or close an obligation.
     pub market_info: [KaminoMarketInfo; 5],
 
     /// Reserved for future use
@@ -50,15 +50,15 @@ impl UserAccount {
     pub const LEN: usize = std::mem::size_of::<UserAccount>();
 
     /// Adds a new KaminoMarketInfo entry to the next available non-occupied slot in `market_info`.
-    /// Does nothing if no slots are available.
-    pub fn add_market_info(&mut self, market: &Pubkey, obligation: &Pubkey) {
+    /// Errors if no slots are available.
+    pub fn add_market_info(&mut self, market: &Pubkey, obligation: &Pubkey) -> Result<()> {
         for market_info in self.market_info.iter_mut() {
             if market_info.market == Pubkey::default() {
                 *market_info = KaminoMarketInfo::new(*market, *obligation);
-                return;
+                return Ok(());
             }
         }
-        msg!("user market info storage is full");
+        return err!(ErrorCode::ObligationEntriesFull);
     }
 
     /// Finds a KaminoMarketInfo entry with the given market.

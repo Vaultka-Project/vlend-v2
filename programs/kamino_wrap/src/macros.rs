@@ -52,6 +52,7 @@ macro_rules! user_account_signer_seeds {
     ($user_account:expr) => {
         &[
             $user_account.user.as_ref(),
+            $user_account.bound_account.as_ref(),
             &(0 as u8).to_le_bytes(),
             b"user_account",
             &[$user_account.bump_seed],

@@ -5,6 +5,7 @@ import { BN, Program } from "@coral-xyz/anchor";
 export type InitKwrapUserArgs = {
   user: PublicKey;
   payer: PublicKey;
+  boundAccount: PublicKey;
 };
 
 export const initKwrapUser = (
@@ -12,7 +13,7 @@ export const initKwrapUser = (
   args: InitKwrapUserArgs
 ) => {
   const ix = program.methods
-    .initUser()
+    .initUser(args.boundAccount)
     .accounts({
       payer: args.payer,
       user: args.user,

@@ -1,4 +1,5 @@
-use anchor_lang::prelude::AccountInfo;
+use crate::errors::ErrorCode;
+use anchor_lang::prelude::*;
 use solana_program::sysvar::instructions::get_instruction_relative;
 
 use crate::constants::MRGN_ID;
@@ -19,8 +20,8 @@ pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
     sighash
 }
 
-/// Panics if the top-level relative instruction is not the Mrgn program
-pub fn validate_mrgn_cpi(sysvar: &AccountInfo) {
+/// Errors if the top-level relative instruction is not the Mrgn program
+pub fn validate_mrgn_cpi(sysvar: &AccountInfo) -> Result<()> {
     let mrgn_key = &MRGN_ID;
     let index_relative_to_current: i64 = 0;
     let instruction_sysvar_account_info = sysvar;
@@ -28,6 +29,7 @@ pub fn validate_mrgn_cpi(sysvar: &AccountInfo) {
         get_instruction_relative(index_relative_to_current, instruction_sysvar_account_info)
             .unwrap();
     if &current_ix.program_id != mrgn_key {
-        panic!("This ix is not permitted within a CPI");
+        return err!(ErrorCode::CpiNotFromMrgn);
     }
+    Ok(())
 }

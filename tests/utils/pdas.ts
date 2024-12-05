@@ -103,10 +103,15 @@ export const deriveGlobalFeeState = (programId: PublicKey) => {
   );
 };
 
-export const deriveKwrapUser = (programId: PublicKey, user: PublicKey) => {
+export const deriveKwrapUser = (
+  programId: PublicKey,
+  user: PublicKey,
+  boundAccount: PublicKey
+) => {
   return PublicKey.findProgramAddressSync(
     [
       user.toBuffer(),
+      boundAccount.toBuffer(),
       new BN(0).toArrayLike(Buffer, "le", 1),
       Buffer.from("user_account", "utf-8"),
     ],

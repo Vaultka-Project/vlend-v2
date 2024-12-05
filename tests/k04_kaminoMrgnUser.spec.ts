@@ -8,10 +8,21 @@ import {
 } from "@coral-xyz/anchor";
 import {
   AddressLookupTableProgram,
+  Keypair,
   PublicKey,
   Transaction,
 } from "@solana/web3.js";
-import { kaminoAccounts, MARKET, users, verbose } from "./rootHooks";
+import {
+  globalFeeWallet,
+  groupAdmin,
+  kaminoAccounts,
+  marginfiGroup,
+  MARKET,
+  PROGRAM_FEE_FIXED,
+  PROGRAM_FEE_RATE,
+  users,
+  verbose,
+} from "./rootHooks";
 import { KaminoLending } from "./fixtures/kamino_lending";
 import idl from "./fixtures/kamino_lending.json";
 import {
@@ -19,8 +30,10 @@ import {
   KWRAP_METADATA,
   KWRAP_OBLIGATION,
   KWRAP_USER_ACCOUNT,
+  USER_ACCOUNT,
 } from "./utils/mocks";
 import { KaminoWrap } from "../target/types/kamino_wrap";
+import { Marginfi } from "../target/types/marginfi";
 import {
   initKwrapMeta,
   initKwrapObligation,
@@ -30,13 +43,17 @@ import { deriveKwrapUser } from "./utils/pdas";
 import {
   assertBNApproximately,
   assertBNEqual,
+  assertI80F48Approx,
+  assertI80F48Equal,
   assertKeyDefault,
   assertKeysEqual,
 } from "./utils/genericTests";
 import { deriveObligation, deriveUserMetadata } from "./utils/kamino-utils";
 import { assert } from "chai";
+import { accountInit } from "./utils/user-instructions";
+import { groupInitialize } from "./utils/group-instructions";
 
-describe("Init mrgn-controlled Kamino user", () => {
+describe("Init kwrap-controlled Kamino user", () => {
   const provider = getProvider() as AnchorProvider;
   const wallet = provider.wallet as Wallet;
 
@@ -45,27 +62,99 @@ describe("Init mrgn-controlled Kamino user", () => {
     new AnchorProvider(provider.connection, wallet, {})
   );
   const kWrapProgram = workspace.kamino_wrap as Program<KaminoWrap>;
+  const mrgnProgram = workspace.Marginfi as Program<Marginfi>;
 
-  it("Init mrgn-kamino users - happy path", async () => {
-    await initMrgnKaminoUserHappyPath(0, verbose);
-    await initMrgnKaminoUserHappyPath(1, verbose);
+  it("(admin) Init mrgn group (if needed)", async () => {
+    try {
+      let group = await mrgnProgram.account.marginfiGroup.fetch(
+        marginfiGroup.publicKey
+      );
+      if (verbose) {
+        console.log("*group already exists: " + marginfiGroup.publicKey);
+        console.log(" admin: " + group.admin);
+      }
+    } catch (err) {
+      await groupAdmin.mrgnProgram.provider.sendAndConfirm(
+        new Transaction().add(
+          await groupInitialize(mrgnProgram, {
+            marginfiGroup: marginfiGroup.publicKey,
+            admin: groupAdmin.wallet.publicKey,
+          })
+        ),
+        [marginfiGroup]
+      );
+
+      let group = await mrgnProgram.account.marginfiGroup.fetch(
+        marginfiGroup.publicKey
+      );
+
+      if (verbose) {
+        console.log("*init group: " + marginfiGroup.publicKey);
+        console.log(" admin: " + group.admin);
+      }
+    }
   });
 
-  it("(user 0) Init user mrgn-controlled metadata - happy path", async () => {
+  it("(users 0/1) Init mrgn users", async () => {
+    await initUserMrgnAccount(0);
+    await initUserMrgnAccount(1);
+  });
+
+  it("(users 0/1) Init mrgn-kamino (kwrap) users - happy path", async () => {
+    await initMrgnKaminoUserHappyPath(0);
+    await initMrgnKaminoUserHappyPath(1);
+  });
+
+  it("(user 0/1) Init user kwrap-controlled metadata - happy path", async () => {
     await initKwrapMetadataHappyPath(0);
-  });
-
-  it("(user 1) Init user mrgn-controlled metadata - happy path", async () => {
     await initKwrapMetadataHappyPath(1);
   });
 
-  it("(user 0) Init user mrgn-controlled obligation on main market - happy path", async () => {
+  it("(user 0/1) Init user kwrap-controlled obligation on main market - happy path", async () => {
     await initKwrapObligationHappyPath(0);
-  });
-
-  it("(user 0) Init user mrgn-controlled obligation on main market - happy path", async () => {
     await initKwrapObligationHappyPath(1);
   });
+
+  async function initUserMrgnAccount(userIndex: number) {
+    const user = users[userIndex];
+    const accountKeypair = Keypair.generate();
+    const accountKey = accountKeypair.publicKey;
+    // Note: this over-rides the account used in the previous test suite if running the full
+    // suite, which is fine.
+    user.accounts.set(USER_ACCOUNT, accountKey);
+
+    let tx: Transaction = new Transaction();
+    tx.add(
+      await accountInit(user.mrgnProgram, {
+        marginfiGroup: marginfiGroup.publicKey,
+        marginfiAccount: accountKey,
+        authority: user.wallet.publicKey,
+        feePayer: user.wallet.publicKey,
+      })
+    );
+    await user.mrgnProgram.provider.sendAndConfirm(tx, [accountKeypair]);
+
+    if (verbose) {
+      console.log(`user ${userIndex} mrgnfi account: ` + accountKey);
+    }
+
+    // Validate fresh and empty
+    const userAcc = await user.mrgnProgram.account.marginfiAccount.fetch(
+      accountKey
+    );
+    assertKeysEqual(userAcc.group, marginfiGroup.publicKey);
+    assertKeysEqual(userAcc.authority, user.wallet.publicKey);
+    const balances = userAcc.lendingAccount.balances;
+    for (let i = 0; i < balances.length; i++) {
+      assert.equal(balances[i].active, false);
+      assertKeyDefault(balances[i].bankPk);
+      assertI80F48Equal(balances[i].assetShares, 0);
+      assertI80F48Equal(balances[i].liabilityShares, 0);
+      assertI80F48Equal(balances[i].emissionsOutstanding, 0);
+      assertBNEqual(balances[i].lastUpdate, 0);
+    }
+    assertBNEqual(userAcc.accountFlags, 0);
+  }
 
   async function initKwrapObligationHappyPath(userIndex: number) {
     const user = users[userIndex];
@@ -73,7 +162,8 @@ describe("Init mrgn-controlled Kamino user", () => {
     const id = 0;
     const [userKwrapAccount] = deriveKwrapUser(
       kWrapProgram.programId,
-      user.wallet.publicKey
+      user.wallet.publicKey,
+      user.accounts.get(USER_ACCOUNT)
     );
     const [metadataKey] = deriveUserMetadata(
       klendProgram.programId,
@@ -138,7 +228,8 @@ describe("Init mrgn-controlled Kamino user", () => {
     );
     const [userKwrapAccount] = deriveKwrapUser(
       kWrapProgram.programId,
-      user.wallet.publicKey
+      user.wallet.publicKey,
+      user.accounts.get(USER_ACCOUNT)
     );
     const [_lookupTableInst, lookupTableAddress] =
       AddressLookupTableProgram.createLookupTable({
@@ -186,17 +277,20 @@ describe("Init mrgn-controlled Kamino user", () => {
     verbose = false
   ) {
     const user = users[userIndex];
+    const mrgnAccount = user.accounts.get(USER_ACCOUNT);
     let tx = new Transaction().add(
       await initKwrapUser(kWrapProgram, {
         payer: user.wallet.publicKey,
         user: user.wallet.publicKey,
+        boundAccount: mrgnAccount,
       })
     );
 
     await user.kwrapProgram.provider.sendAndConfirm(tx);
     const [userAccountKey, bump] = deriveKwrapUser(
       kWrapProgram.programId,
-      user.wallet.publicKey
+      user.wallet.publicKey,
+      user.accounts.get(USER_ACCOUNT)
     );
     user.accounts.set(KWRAP_USER_ACCOUNT, userAccountKey);
     if (verbose) {
@@ -208,6 +302,7 @@ describe("Init mrgn-controlled Kamino user", () => {
     );
     assertKeysEqual(userAccount.key, userAccountKey);
     assertKeysEqual(userAccount.user, user.wallet.publicKey);
+    assertKeysEqual(userAccount.boundAccount, mrgnAccount);
     const now = Math.floor(Date.now() / 1000);
     assertBNApproximately(userAccount.lastActivity, now, 2);
     assert.equal(userAccount.bumpSeed, bump);

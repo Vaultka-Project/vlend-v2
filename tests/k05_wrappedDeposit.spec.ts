@@ -57,7 +57,7 @@ describe("Deposit from Kamino account", () => {
 
   const depositAmount = 10;
 
-  it("(user 0) deposits USDC into mrgn-owned Kamino obligation - happy path", async () => {
+  it("(user 0) deposits USDC into kwrap-owned Kamino obligation - happy path", async () => {
     const amt = new BN(depositAmount * 10 ** ecosystem.usdcDecimals);
     const market = kaminoAccounts.get(MARKET);
     const [lendingMarketAuthority] = lendingMarketAuthPda(
@@ -168,7 +168,7 @@ describe("Deposit from Kamino account", () => {
 
   // The only notable difference here is that the obligation must now incldue the usdc reserve in
   // remaining_accounts when refreshing.
-  it("(user 0) deposits USDC into mrgn-owned Kamino obligation (again) - happy path", async () => {
+  it("(user 0) deposits USDC into kwrap-owned Kamino obligation (again) - happy path", async () => {
     const amt = new BN(depositAmount * 10 ** ecosystem.usdcDecimals);
     const market = kaminoAccounts.get(MARKET);
     const [lendingMarketAuthority] = lendingMarketAuthPda(
@@ -220,13 +220,13 @@ describe("Deposit from Kamino account", () => {
   their mrgn-wrapped equivalent, but we can't because Kamino requires that refresh instructions
   (which are checked by introspection) appear in a paritcular spot in the instruction. Deposit wants
   the refresh for the user's obligation at the first index after refreshing reserves, and Withdraw
-  wants the refresh the wrapped obligation in the same slot, rendering them incompatible.
+  wants the refresh for the wrapped obligation in the same slot, rendering them incompatible.
 
   Currently, if the user already has a Kamino position, we must send a tx to withdraw it, transfer
   that balance to the pda-owned usdc account, and then call freshDeposit.
   */
 
-  it("(user 0) deposits USDC from Kamino obligation to mrgn-owned obligation - happy path", async () => {
+  it("(user 0) deposits USDC from Kamino obligation to kwrap-owned obligation - happy path", async () => {
     const amt = new BN(depositAmount * 10 ** ecosystem.usdcDecimals);
     const market = kaminoAccounts.get(MARKET);
     const [lendingMarketAuthority] = lendingMarketAuthPda(

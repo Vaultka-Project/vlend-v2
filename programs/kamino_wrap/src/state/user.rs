@@ -4,8 +4,10 @@ use bytemuck::{Pod, Zeroable};
 use crate::errors::ErrorCode;
 use crate::{assert_struct_align, assert_struct_size};
 
-assert_struct_size!(UserAccount, 1432);
+assert_struct_size!(UserAccount, 1464);
 assert_struct_align!(UserAccount, 8);
+
+pub const ACCOUNT_FREE_TO_WITHDRAW: u8 = 0b00000001;
 
 pub const USER_ACCOUNT_PADDING: usize = 512;
 
@@ -14,7 +16,7 @@ pub const USER_ACCOUNT_PADDING: usize = 512;
 #[account(zero_copy)]
 #[repr(C)]
 pub struct UserAccount {
-    /// This account's own key.
+    /// This account's own key. A PDA of `user`, `bound_account`, (0 as u8), and `USER_ACCOUNT_SEED`
     pub key: Pubkey,
     /// This account's owner. Must sign most transactions related to this account.
     pub user: Pubkey,
@@ -22,6 +24,8 @@ pub struct UserAccount {
     pub user_metadata: Pubkey,
     /// Kamino LUT associated with the metadata account
     pub lut: Pubkey,
+    /// Typically, the mrgn account associated with this kwrap user account.
+    pub bound_account: Pubkey,
 
     // Reserved for future keys
     _reserved0: [u8; 128],
@@ -29,7 +33,8 @@ pub struct UserAccount {
     /// At-a-glance information about markets this account has positions in.
     /// * Not sorted in any particular order
     /// * Kamino has 5 "primary" markets as of November 2024 (Jito, JLP, Main, Altcoin, Ethena). It
-    ///   is very unlikely that the vast majority of users will use all 5 slots.
+    ///   is very unlikely that the vast majority of users will use all 5 slots. We assume 90% of
+    ///   users will use 2 or fewer Kamino markets
     /// * If full, adding a new obligation will error. Create a new account or close an obligation.
     pub market_info: [KaminoMarketInfo; 5],
 
@@ -39,8 +44,12 @@ pub struct UserAccount {
     pub last_activity: i64,
     /// Bump to generate this pda
     pub bump_seed: u8,
+    /// * (1) ACCOUNT_FREE_TO_WITHDRAW - if set, this account has not yet had any debts taken out
+    ///   against it, and the owner can freely withdraw from it with no restrictions.
+    /// * (2, 4, 8, 16, 32, 64, 128) - reserved for future use
+    pub flags: u8,
     // Pad to nearest 8-byte alignment
-    pub padding0: [u8; 7],
+    pub padding0: [u8; 6],
 
     // Reserved for future use
     _reserved1: [u8; USER_ACCOUNT_PADDING],
@@ -76,6 +85,14 @@ impl UserAccount {
             .iter()
             .find(|&market_info| market_info.obligation.eq(obligation))
     }
+
+    // TODO clear market info (for close obligation)...
+
+    /// True if the `ACCOUNT_FREE_TO_WITHDRAW` flag is set, i.e. the account has no registered debts and
+    /// is free to withdraw at any time
+    pub fn is_free_to_withdraw(&self) -> bool {
+        self.flags & ACCOUNT_FREE_TO_WITHDRAW != 0
+    }
 }
 
 pub const MARKET_INFO_PADDING: usize = 64;
@@ -85,7 +102,7 @@ pub const MARKET_INFO_PADDING: usize = 64;
 pub struct KaminoMarketInfo {
     /// Kamino lending market
     pub market: Pubkey,
-    /// obligation for the given market
+    /// kwrap-owned obligation for the given market
     pub obligation: Pubkey,
     _reserved0: [u8; MARKET_INFO_PADDING],
 }

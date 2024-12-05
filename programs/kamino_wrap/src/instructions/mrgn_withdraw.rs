@@ -1,16 +1,26 @@
 // Withdraws funds from a mrgn account
-use crate::{constants::KAMINO_ID, ix_utils::validate_mrgn_cpi, state::UserAccount, user_account_signer_seeds};
+use crate::{
+    constants::KAMINO_ID, ix_utils::validate_mrgn_cpi, state::UserAccount,
+    user_account_signer_seeds,
+};
 use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::{token::Token, token_interface::TokenInterface};
+use anchor_spl::{
+    token::Token,
+    token_interface::{self, Mint, TokenAccount, TokenInterface},
+};
 use solana_program::{instruction::Instruction, program::invoke_signed};
 
 use super::withdraw_ix_data;
 
 pub fn mrgn_withdraw(ctx: Context<MrgnWithdraw>, collateral_amount: u64) -> Result<()> {
-    // TODO enforce CPI -OR- unbound account
     {
-        validate_mrgn_cpi(&ctx.accounts.instruction_sysvar_account.to_account_info());
-    } // release borrow of sysvar
+        let user_account = ctx.accounts.user_account.load()?;
+        if ! user_account.is_free_to_withdraw(){
+            // Note: if the account is free to withdraw, we don't apply the mrgn CPI restriction.
+            validate_mrgn_cpi(&ctx.accounts.instruction_sysvar_account.to_account_info())?;
+        }
+    } // release borrow of sysvar and user account
+
     {
         // Note: clone() is required here to avoid re-borrowing as mut of `AccountMeta::new`
         let user_account = ctx.accounts.user_account.load()?.clone();
@@ -20,8 +30,8 @@ pub fn mrgn_withdraw(ctx: Context<MrgnWithdraw>, collateral_amount: u64) -> Resu
         invoke_signed(
             &ix,
             &[
-                accs.user.to_account_info(), // obligation owner (signer/fee payer)
-                accs.user_obligation.to_account_info(), // obligation
+                accs.user_account.to_account_info(), // obligation owner (signer/fee payer)
+                accs.obligation.to_account_info(),   // obligation
                 accs.lending_market.to_account_info(), // market
                 accs.lending_market_authority.to_account_info(), // market auth
                 // **** reserve accounts *****
@@ -43,6 +53,8 @@ pub fn mrgn_withdraw(ctx: Context<MrgnWithdraw>, collateral_amount: u64) -> Resu
         )?;
     }
 
+    ctx.accounts.transfer_kwrapped_token_to_user(collateral_amount)?;
+
     let mut user_account = ctx.accounts.user_account.load_mut()?;
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
 
@@ -58,8 +70,8 @@ fn withdraw_cpi_ix(
     let instruction = Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(accs.user.key(), true), // obligation owner (signer)
-            AccountMeta::new(ctx.accounts.user_obligation.key(), false), // obligation
+            AccountMeta::new(accs.user_account.key(), true), // obligation owner (signer)
+            AccountMeta::new(ctx.accounts.obligation.key(), false), // obligation
             AccountMeta::new_readonly(accs.lending_market.key(), false), // lending market
             AccountMeta::new_readonly(accs.lending_market_authority.key(), false), // market auth
             // **** reserve accounts *****
@@ -93,7 +105,6 @@ pub struct MrgnWithdraw<'info> {
     #[account(
         mut,
         has_one = user,
-        // If has_one is ever improved, we might infer these accounts.
         constraint = {
             let acc = user_account.load()?;
             let info = acc.find_info_by_market(lending_market.key);
@@ -107,10 +118,6 @@ pub struct MrgnWithdraw<'info> {
     /// CHECK: validated in CPI
     #[account(mut)]
     pub obligation: UncheckedAccount<'info>,
-    /// Obligation to withdraw from, must be under the given market, and owned by `user`
-    /// CHECK: validated in CPI
-    #[account(mut)]
-    pub user_obligation: UncheckedAccount<'info>,
     /// Kamino lending market overseeing the reserve
     /// CHECK: validated in CPI
     pub lending_market: UncheckedAccount<'info>,
@@ -124,7 +131,7 @@ pub struct MrgnWithdraw<'info> {
     /// Read from the reserve
     /// CHECK: validated in CPI
     #[account(mut)]
-    pub reserve_liquidity_mint: UncheckedAccount<'info>,
+    pub reserve_liquidity_mint: Box<InterfaceAccount<'info, Mint>>,
     /// Read from the reserve
     /// CHECK: validated in CPI
     #[account(mut)]
@@ -137,14 +144,15 @@ pub struct MrgnWithdraw<'info> {
     /// CHECK: validated in CPI
     #[account(mut)]
     pub reserve_destination_deposit_collateral: UncheckedAccount<'info>,
-    /// An ATA for `reserve_liquidity_mint` owned by `user_account`
-    /// CHECK: validated in CPI
-    #[account(mut)]
-    pub user_source_liquidity: UncheckedAccount<'info>,
-    /// An ATA for `reserve_liquidity_mint` owned by `user`
+    /// An ATA for `reserve_liquidity_mint` owned by `user_account`. Because Kamino only allows the
+    /// owner (which is `user_account`) to withdraw, this ATA acts as an intermediary, but the funds
+    /// are immediately transferred to `user_withdraw_destination`
     /// CHECK: validated in CPI
     #[account(mut)]
     pub user_destination_liquidity: UncheckedAccount<'info>,
+    /// The users's destination ATA for withdrawn funds. Completely unchecked.
+    #[account(mut)]
+    pub user_withdraw_destination: InterfaceAccount<'info, TokenAccount>,
     /// CHECK: unused, placeholder in case Kamino adds a usage for
     /// `placeholder_user_destination_collateral`
     #[account(mut)]
@@ -158,4 +166,28 @@ pub struct MrgnWithdraw<'info> {
     /// CHECK: checked against hardcoded sysvar program
     #[account(address = sysvar::instructions::ID)]
     pub instruction_sysvar_account: UncheckedAccount<'info>,
+}
+
+impl<'info> MrgnWithdraw<'info> {
+    pub fn transfer_kwrapped_token_to_user(&self, amount: u64) -> Result<()> {
+        // Borrow checker wizard magic
+        let user_account = self.user_account.load()?;
+        let signer_seeds: &[&[u8]] = user_account_signer_seeds!(user_account);
+        let signer_seeds = [signer_seeds];
+
+        let decimals = self.reserve_liquidity_mint.decimals;
+        let cpi_accounts = token_interface::TransferChecked {
+            from: self.user_destination_liquidity.to_account_info(),
+            to: self.user_withdraw_destination.to_account_info(),
+            authority: self.user_account.to_account_info(),
+            mint: self.reserve_liquidity_mint.to_account_info(),
+        };
+        let program = self.liquidity_token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(
+            program,
+            cpi_accounts,
+            &signer_seeds,
+        );
+        token_interface::transfer_checked(cpi_ctx, amount, decimals)
+    }
 }

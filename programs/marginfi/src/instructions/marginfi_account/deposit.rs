@@ -5,7 +5,7 @@ use crate::{
     prelude::*,
     state::{
         marginfi_account::{BankAccountWrapper, MarginfiAccount, DISABLED_FLAG},
-        marginfi_group::Bank,
+        marginfi_group::{Bank, RiskTier},
     },
     utils::{self, validate_asset_tags},
 };
@@ -50,6 +50,11 @@ pub fn lending_account_deposit<'info>(
     check!(
         !marginfi_account.get_flag(DISABLED_FLAG),
         MarginfiError::AccountDisabled
+    );
+
+    check!(
+        !(bank.config.risk_tier == RiskTier::Kwrap),
+        MarginfiError::CantDepositKwrappedAssets
     );
 
     bank.accrue_interest(

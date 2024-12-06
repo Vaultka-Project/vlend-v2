@@ -104,6 +104,14 @@ pub enum MarginfiError {
     InvalidFeeAta,
     #[msg("Use add pool permissionless instead")] // 6050
     AddedStakedPoolManually,
+    #[msg("Cannot borrow kamino wrapped assets")] // 6051
+    CantBorrowKwrappedAssets,
+    #[msg("Cannot deposit kamino wrapped assets, use kwrap to deposit, then use register")] // 6052
+    CantDepositKwrappedAssets,
+    #[msg("Kwrap account doesn't match known derived account")] // 6053
+    InvalidKwrapAccount,
+    #[msg("Mint does not match Reserve Mint")] // 6054
+    KwrapReserveMismatch,
 }
 
 impl From<MarginfiError> for ProgramError {

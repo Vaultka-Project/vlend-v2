@@ -15,9 +15,12 @@ use super::withdraw_ix_data;
 pub fn mrgn_withdraw(ctx: Context<MrgnWithdraw>, collateral_amount: u64) -> Result<()> {
     {
         let user_account = ctx.accounts.user_account.load()?;
-        if ! user_account.is_free_to_withdraw(){
+        let market_info = user_account.find_info_by_obligation(&ctx.accounts.obligation.key());
+        if !(market_info.unwrap().is_free_to_withdraw()) {
             // Note: if the account is free to withdraw, we don't apply the mrgn CPI restriction.
-            validate_mrgn_cpi(&ctx.accounts.instruction_sysvar_account.to_account_info())?;
+            let sysvar = &ctx.accounts.instruction_sysvar_account.to_account_info();
+            // Note: future support for cpi from other programs would go here...
+            validate_mrgn_cpi(sysvar)?;
         }
     } // release borrow of sysvar and user account
 
@@ -53,7 +56,8 @@ pub fn mrgn_withdraw(ctx: Context<MrgnWithdraw>, collateral_amount: u64) -> Resu
         )?;
     }
 
-    ctx.accounts.transfer_kwrapped_token_to_user(collateral_amount)?;
+    ctx.accounts
+        .transfer_kwrapped_token_to_user(collateral_amount)?;
 
     let mut user_account = ctx.accounts.user_account.load_mut()?;
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
@@ -183,11 +187,7 @@ impl<'info> MrgnWithdraw<'info> {
             mint: self.reserve_liquidity_mint.to_account_info(),
         };
         let program = self.liquidity_token_program.to_account_info();
-        let cpi_ctx = CpiContext::new_with_signer(
-            program,
-            cpi_accounts,
-            &signer_seeds,
-        );
+        let cpi_ctx = CpiContext::new_with_signer(program, cpi_accounts, &signer_seeds);
         token_interface::transfer_checked(cpi_ctx, amount, decimals)
     }
 }

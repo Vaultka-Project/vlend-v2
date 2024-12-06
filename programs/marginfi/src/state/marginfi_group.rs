@@ -1167,6 +1167,9 @@ pub enum RiskTier {
     /// For example, if users has USDC, and wants to borrow XYZ which is isolated,
     /// they can't borrow XYZ together with SOL, only XYZ alone.
     Isolated = 1,
+    /// Kamino-held deposits. Treated the same as regular collateral, except for certain risk and
+    /// liquidation purposes. Cannot be borrowed
+    Kwrap = 2,
 }
 
 unsafe impl Zeroable for RiskTier {}

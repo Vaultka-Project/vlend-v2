@@ -30,6 +30,11 @@ export const ASSET_TAG_DEFAULT = 0;
 export const ASSET_TAG_SOL = 1;
 export const ASSET_TAG_STAKED = 2;
 
+/*
+  Kwrap flags
+*/
+export const ACCOUNT_FREE_TO_WITHDRAW = 1;
+
 /**
  * The default bank config has
  * * all weights are 1

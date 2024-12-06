@@ -10,4 +10,8 @@ pub enum ErrorCode {
     ObligationEntriesFull, // 6002
     #[msg("Only the Mrgnlend program can enable withdraws on this account, withdraw through Mrgn.")]
     CpiNotFromMrgn, // 6003
+    #[msg("Attempting to add a duplicate market entry.")]
+    DuplicateMarket, // 6004
+    #[msg("This account does not have market info with that obligation or market.")]
+    MarketInfoDoesNotExist, // 6005
 }

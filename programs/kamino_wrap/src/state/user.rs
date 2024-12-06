@@ -61,6 +61,11 @@ impl UserAccount {
     /// Adds a new KaminoMarketInfo entry to the next available non-occupied slot in `market_info`.
     /// Errors if no slots are available.
     pub fn add_market_info(&mut self, market: &Pubkey, obligation: &Pubkey) -> Result<()> {
+        if self.find_info_by_obligation(obligation).is_some() {
+            return err!(ErrorCode::DuplicateMarket);
+        }
+        // Note: a second obligation on the same market is technically supported.
+
         for market_info in self.market_info.iter_mut() {
             if market_info.market == Pubkey::default() {
                 *market_info = KaminoMarketInfo::new(*market, *obligation);
@@ -86,16 +91,33 @@ impl UserAccount {
             .find(|&market_info| market_info.obligation.eq(obligation))
     }
 
-    // TODO clear market info (for close obligation)...
+    /// Finds a KaminoMarketInfo entry with the given obligation.
+    /// Returns `Some(&KaminoMarketInfo)` if found, otherwise `None`.
+    pub fn find_info_by_obligation_mut(
+        &mut self,
+        obligation: &Pubkey,
+    ) -> Option<&mut KaminoMarketInfo> {
+        self.market_info
+            .iter_mut()
+            .find(|market_info| market_info.obligation.eq(obligation))
+    }
 
-    /// True if the `ACCOUNT_FREE_TO_WITHDRAW` flag is set, i.e. the account has no registered debts and
-    /// is free to withdraw at any time
-    pub fn is_free_to_withdraw(&self) -> bool {
-        self.flags & ACCOUNT_FREE_TO_WITHDRAW != 0
+    pub fn clear_slot(&mut self, slot: usize) {
+        self.market_info[slot] = KaminoMarketInfo::zeroed();
+    }
+
+    pub fn clear_slot_with_obligation(&mut self, obligation: &Pubkey) {
+        if let Some(market_info) = self
+            .market_info
+            .iter_mut()
+            .find(|market_info| market_info.obligation.eq(obligation))
+        {
+            *market_info = KaminoMarketInfo::zeroed();
+        }
     }
 }
 
-pub const MARKET_INFO_PADDING: usize = 64;
+pub const MARKET_INFO_PADDING: usize = 32;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Zeroable, Pod)]
 #[repr(C)]
@@ -104,7 +126,10 @@ pub struct KaminoMarketInfo {
     pub market: Pubkey,
     /// kwrap-owned obligation for the given market
     pub obligation: Pubkey,
-    _reserved0: [u8; MARKET_INFO_PADDING],
+    pub flags: u8,
+    _padding0: [u8; 7],
+    _reserved0: [u8; 24],
+    _reserved1: [u8; MARKET_INFO_PADDING],
 }
 
 impl KaminoMarketInfo {
@@ -113,7 +138,124 @@ impl KaminoMarketInfo {
         KaminoMarketInfo {
             market,
             obligation,
-            _reserved0: [0; MARKET_INFO_PADDING],
+            flags: ACCOUNT_FREE_TO_WITHDRAW,
+            _padding0: [0; 7],
+            _reserved0: [0; 24],
+            _reserved1: [0; MARKET_INFO_PADDING],
         }
+    }
+
+    /// True if the `ACCOUNT_FREE_TO_WITHDRAW` flag is set, i.e. the account has no registered debts and
+    /// is free to withdraw at any time
+    pub fn is_free_to_withdraw(&self) -> bool {
+        self.flags & ACCOUNT_FREE_TO_WITHDRAW != 0
+    }
+
+    /// Unsets the `ACCOUNT_FREE_TO_WITHDRAW`, leaving other flags as-is
+    pub fn remove_free_to_withdraw_flag(&mut self) {
+        self.flags &= !ACCOUNT_FREE_TO_WITHDRAW;
+    }
+
+    /// Sets the `ACCOUNT_FREE_TO_WITHDRAW`, leaving other flags as-is
+    pub fn set_free_to_withdraw_flag(&mut self) {
+        self.flags &= ACCOUNT_FREE_TO_WITHDRAW;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use solana_program::pubkey::Pubkey;
+
+    #[test]
+    fn test_add_market_info_success() {
+        let mut user_account = UserAccount::zeroed();
+        let market = Pubkey::new_unique();
+        let obligation = Pubkey::new_unique();
+
+        let result = user_account.add_market_info(&market, &obligation);
+        assert!(result.is_ok());
+        assert_eq!(user_account.market_info[0].market, market);
+        assert_eq!(user_account.market_info[0].obligation, obligation);
+    }
+
+    #[test]
+    fn test_add_multiple_market_info_success() {
+        let mut user_account = UserAccount::zeroed();
+        let market1 = Pubkey::new_unique();
+        let obligation1 = Pubkey::new_unique();
+        let market2 = Pubkey::new_unique();
+        let obligation2 = Pubkey::new_unique();
+
+        // Add first market info
+        let result1 = user_account.add_market_info(&market1, &obligation1);
+        assert!(result1.is_ok());
+        assert_eq!(user_account.market_info[0].market, market1);
+        assert_eq!(user_account.market_info[0].obligation, obligation1);
+
+        // Add second market info
+        let result2 = user_account.add_market_info(&market2, &obligation2);
+        assert!(result2.is_ok());
+        assert_eq!(user_account.market_info[1].market, market2);
+        assert_eq!(user_account.market_info[1].obligation, obligation2);
+    }
+
+    #[test]
+    fn test_add_market_info_no_slots_available() {
+        let mut user_account = UserAccount::zeroed();
+
+        // Fill all available slots with market info entries
+        for i in 0..user_account.market_info.len() {
+            let market = Pubkey::new_unique();
+            let obligation = Pubkey::new_unique();
+            let result = user_account.add_market_info(&market, &obligation);
+            assert!(result.is_ok(), "Failed to add market info at index {}", i);
+        }
+
+        // Attempt to add one more market info, which should fail
+        let extra_market = Pubkey::new_unique();
+        let extra_obligation = Pubkey::new_unique();
+        let result = user_account.add_market_info(&extra_market, &extra_obligation);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), ErrorCode::ObligationEntriesFull.into());
+    }
+
+    #[test]
+    fn test_add_market_info_to_filled_and_one_slot_vacant() {
+        let mut user_account = UserAccount::zeroed();
+
+        // Fill all slots and then free one of them
+        for i in 0..user_account.market_info.len() {
+            let market = Pubkey::new_unique();
+            let obligation = Pubkey::new_unique();
+            let result = user_account.add_market_info(&market, &obligation);
+            assert!(result.is_ok(), "Failed to add market info at index {}", i);
+        }
+
+        user_account.clear_slot(1);
+
+        // Try to add a new market info again
+        let new_market = Pubkey::new_unique();
+        let new_obligation = Pubkey::new_unique();
+        let result = user_account.add_market_info(&new_market, &new_obligation);
+        assert!(result.is_ok());
+        assert_eq!(user_account.market_info[1].market, new_market);
+        assert_eq!(user_account.market_info[1].obligation, new_obligation);
+    }
+
+    #[test]
+    fn test_add_market_info_duplicate_obligation() {
+        let mut user_account = UserAccount::zeroed();
+        let market = Pubkey::new_unique();
+        let obligation = Pubkey::new_unique();
+
+        // Add first market info
+        let result1 = user_account.add_market_info(&market, &obligation);
+        assert!(result1.is_ok());
+
+        // Attempt to add duplicate again, which will fail
+        let result2 = user_account.add_market_info(&market, &obligation);
+        assert!(result2.is_err());
+        assert_eq!(result2.unwrap_err(), ErrorCode::DuplicateMarket.into());
     }
 }

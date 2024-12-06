@@ -320,6 +320,10 @@ impl<'info> BankAccountWithPriceFeed<'_, 'info> {
                     Some(asset_weight),
                 )
             }
+            RiskTier::Kwrap => {
+                // TODO
+                Ok(I80F48::ZERO)
+            }
             RiskTier::Isolated => Ok(I80F48::ZERO),
         }
     }
@@ -340,7 +344,7 @@ impl<'info> BankAccountWithPriceFeed<'_, 'info> {
             Some(PriceBias::High),
         )?;
 
-        // If `ASSET_TAG_STAKED` assets can ever be borrowed, accomodate for that here...
+        // If `ASSET_TAG_STAKED` or RiskTier::Kwrap assets can ever be borrowed, accomodate for that here...
 
         calc_value(
             bank.get_liability_amount(self.balance.liability_shares.into())?,
@@ -699,27 +703,38 @@ impl<'info> RiskEngine<'_, 'info> {
     where
         'info: 'a,
     {
-        let balances_with_liablities = self
+        let balances_with_liabilities = self
             .bank_accounts_with_price
             .iter()
             .filter(|a| a.balance.is_empty(BalanceSide::Liabilities).not());
 
-        let n_balances_with_liablities = balances_with_liablities.clone().count();
+        let mut is_in_isolated_risk_tier = false;
+        let mut n_balances_with_liabilities = 0;
 
-        let is_in_isolated_risk_tier = balances_with_liablities.clone().any(|a| {
+        for a in balances_with_liabilities {
+            n_balances_with_liabilities += 1;
+
             // SAFETY: We are shortening 'info -> 'a
             let shorter_bank: &'a AccountInfo<'a> = unsafe { core::mem::transmute(&a.bank) };
-            AccountLoader::<Bank>::try_from(shorter_bank)
+            let risk_tier = AccountLoader::<Bank>::try_from(shorter_bank)
                 .unwrap()
                 .load()
                 .unwrap()
                 .config
-                .risk_tier
-                == RiskTier::Isolated
-        });
+                .risk_tier;
+
+            if risk_tier == RiskTier::Isolated {
+                is_in_isolated_risk_tier = true;
+            }
+
+            check!(
+                !(risk_tier == RiskTier::Kwrap),
+                MarginfiError::CantBorrowKwrappedAssets
+            );
+        }
 
         check!(
-            !is_in_isolated_risk_tier || n_balances_with_liablities == 1,
+            !is_in_isolated_risk_tier || n_balances_with_liabilities == 1,
             MarginfiError::IsolatedAccountIllegalState
         );
 
@@ -930,6 +945,11 @@ impl<'a> BankAccountWrapper<'a> {
     /// Deposit an asset, will repay any outstanding liabilities.
     pub fn deposit(&mut self, amount: I80F48) -> MarginfiResult {
         self.increase_balance_internal(amount, BalanceIncreaseType::Any)
+    }
+
+    /// Deposit an asset, ignoring repayment of liabilities. Useful only for banks where borrowing is disabled.
+    pub fn deposit_no_repay(&mut self, amount: I80F48) -> MarginfiResult {
+        self.increase_balance_internal(amount, BalanceIncreaseType::DepositOnly)
     }
 
     /// Repay a liability, will error if there is not enough liability - depositing is not allowed.

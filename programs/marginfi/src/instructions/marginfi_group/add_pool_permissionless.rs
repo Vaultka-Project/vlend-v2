@@ -25,6 +25,9 @@ pub fn lending_pool_add_bank_permissionless(
     ctx: Context<LendingPoolAddBankPermissionless>,
     _bank_seed: u64,
 ) -> MarginfiResult {
+
+    // TODO debit the flat sol fee for native staked banks?
+
     let LendingPoolAddBankPermissionless {
         bank_mint,
         liquidity_vault,

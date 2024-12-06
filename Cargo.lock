@@ -3025,6 +3025,7 @@ dependencies = [
  "fixed",
  "fixed-macro",
  "futures",
+ "kamino_wrap",
  "lazy_static",
  "pretty_assertions",
  "pyth-sdk-solana",

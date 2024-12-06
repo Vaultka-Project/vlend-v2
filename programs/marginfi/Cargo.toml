@@ -39,6 +39,8 @@ switchboard-solana = { workspace = true }
 switchboard-on-demand = { workspace = true }
 borsh = "0.10.3"
 
+kwrap = { path = "../kamino_wrap", package = "kamino_wrap" }
+
 bytemuck = "1.9.1"
 cfg-if = "1.0.0"
 enum_dispatch = "0.3.11"

@@ -8,8 +8,18 @@ pub mod state;
 use anchor_lang::prelude::*;
 use instructions::*;
 
-declare_id!("4Rd33Yfzm6BVWeTRjBfKpni4eVJuFdbyupngTHCsVnyU");
-
+// TODO fill actual devnet/staging/mainnet keys
+cfg_if::cfg_if! {
+    if #[cfg(feature = "mainnet-beta")] {
+        declare_id!("4Rd33Yfzm6BVWeTRjBfKpni4eVJuFdbyupngTHCsVnyU");
+    } else if #[cfg(feature = "devnet")] {
+        declare_id!("4Rd33Yfzm6BVWeTRjBfKpni4eVJuFdbyupngTHCsVnyU");
+    } else if #[cfg(feature = "staging")] {
+        declare_id!("4Rd33Yfzm6BVWeTRjBfKpni4eVJuFdbyupngTHCsVnyU");
+    } else {
+        declare_id!("4Rd33Yfzm6BVWeTRjBfKpni4eVJuFdbyupngTHCsVnyU");
+    }
+}
 #[program]
 pub mod kamino_wrap {
     use super::*;
@@ -32,5 +42,13 @@ pub mod kamino_wrap {
 
     pub fn init_obligation(ctx: Context<InitObligation>, tag: u8, id: u8) -> Result<()> {
         instructions::init_obligation(ctx, tag, id)
+    }
+
+    pub fn start_borrow(ctx: Context<StartBorrow>, obligaton: Pubkey) -> Result<()> {
+        instructions::start_borrow(ctx, obligaton)
+    }
+
+    pub fn mrgn_withdraw(ctx: Context<MrgnWithdraw>, collateral_amount: u64) -> Result<()> {
+        instructions::mrgn_withdraw(ctx, collateral_amount)
     }
 }

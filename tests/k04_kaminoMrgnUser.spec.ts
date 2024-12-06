@@ -52,6 +52,7 @@ import { deriveObligation, deriveUserMetadata } from "./utils/kamino-utils";
 import { assert } from "chai";
 import { accountInit } from "./utils/user-instructions";
 import { groupInitialize } from "./utils/group-instructions";
+import { ACCOUNT_FREE_TO_WITHDRAW } from "./utils/types";
 
 describe("Init kwrap-controlled Kamino user", () => {
   const provider = getProvider() as AnchorProvider;
@@ -219,6 +220,14 @@ describe("Init kwrap-controlled Kamino user", () => {
       assertBNEqual(borrows[i].marketValueSf, 0);
     }
     assert.equal(kwrappedObligation.hasDebt, 0);
+
+    const kwrapAccount = await kWrapProgram.account.userAccount.fetch(
+      userKwrapAccount
+    );
+    const info = kwrapAccount.marketInfo[0];
+    assertKeysEqual(info.market, marketKey);
+    assertKeysEqual(info.obligation, obligationKey);
+    assert.equal(info.flags, ACCOUNT_FREE_TO_WITHDRAW);
   }
 
   async function initKwrapMetadataHappyPath(userIndex: number) {

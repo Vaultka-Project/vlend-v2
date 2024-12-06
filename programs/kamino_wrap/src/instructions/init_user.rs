@@ -1,7 +1,7 @@
 // Runs once per user to init the central account that manages their kamino positions. Other users
 // can run this to pay rent on behalf of a user.
 use crate::constants::USER_ACCOUNT_SEED;
-use crate::state::{UserAccount, ACCOUNT_FREE_TO_WITHDRAW};
+use crate::state::UserAccount;
 use anchor_lang::prelude::*;
 
 #[allow(unused_variables)]
@@ -12,7 +12,6 @@ pub fn init_user_account(ctx: Context<InitUser>, bound_account: Pubkey) -> Resul
     user_account.user = ctx.accounts.user.key();
     user_account.bump_seed = ctx.bumps.user_account;
     user_account.bound_account = bound_account;
-    user_account.flags = ACCOUNT_FREE_TO_WITHDRAW;
 
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
 

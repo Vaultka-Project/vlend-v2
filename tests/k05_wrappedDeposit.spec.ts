@@ -281,7 +281,7 @@ describe("Deposit from Kamino account", () => {
     try {
       await users[0].kwrapProgram.provider.sendAndConfirm(tx);
     } catch (err) {
-      console.log("Existing Deposit is currently not supported.");
+      console.error("Existing Deposit is currently not supported.");
     }
   });
 });

@@ -1,4 +1,5 @@
 mod accrue_bank_interest;
+mod add_kwrap_pool;
 mod add_pool;
 mod add_pool_permissionless;
 mod add_pool_with_seed;
@@ -16,6 +17,7 @@ mod propagate_fee_state;
 mod propagate_staked_settings;
 
 pub use accrue_bank_interest::*;
+pub use add_kwrap_pool::*;
 pub use add_pool::*;
 pub use add_pool_permissionless::*;
 pub use add_pool_with_seed::*;

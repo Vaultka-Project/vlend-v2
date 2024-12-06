@@ -6,6 +6,7 @@ pub mod macros;
 pub mod prelude;
 pub mod state;
 pub mod utils;
+pub mod kwrap_utils;
 
 use anchor_lang::prelude::*;
 use instructions::*;

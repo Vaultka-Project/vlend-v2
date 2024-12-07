@@ -2,17 +2,18 @@ pub mod constants;
 pub mod errors;
 pub mod events;
 pub mod instructions;
+pub mod kwrap_utils;
 pub mod macros;
 pub mod prelude;
 pub mod state;
 pub mod utils;
-pub mod kwrap_utils;
 
 use anchor_lang::prelude::*;
 use instructions::*;
 use prelude::*;
 use state::marginfi_group::WrappedI80F48;
 use state::marginfi_group::{BankConfigCompact, BankConfigOpt};
+use state::kwrap_settings::KwrapConfigCompact;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "mainnet-beta")] {
@@ -64,6 +65,14 @@ pub mod marginfi {
         bank_seed: u64,
     ) -> MarginfiResult {
         marginfi_group::lending_pool_add_bank_permissionless(ctx, bank_seed)
+    }
+
+    pub fn lending_pool_add_bank_kwrapped(
+        ctx: Context<LendingPoolAddBankKwrap>,
+        config: KwrapConfigCompact,
+        bank_seed: u64,
+    ) -> MarginfiResult {
+        marginfi_group::lending_pool_add_bank_kwrap(ctx, config, bank_seed)
     }
 
     pub fn lending_pool_configure_bank(

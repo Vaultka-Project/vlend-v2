@@ -23,12 +23,18 @@ assert_struct_align!(MinimalReserve, 8);
 pub struct MinimalReserve {
     pub version: u64, // 0x0
 
-    // 112 bytes (0x8 - 0x78) - Fills up to the offset of `ReserveLiquidity` (0x78)
+    // 16 bytes (0x8 - 0x12) `LastUpdate`
+    // LastUpdate
+    slot: u64,
+    stale: u8,
+    price_status: u8,
+    placeholder: [u8; 6],
+
+    // 96 bytes (0x12 - 0x78) - Fills up to the offset of `ReserveLiquidity` (0x78)
     padding1_part1: [u8; 64],
     padding1_part2: [u8; 32],
-    padding1_part3: [u8; 16],
 
-    // 152 bytes (32 + 32 + 32 + 8 + 16 + 16 + 8 + 8)
+    // 152 bytes (32 + 32 + 32 + 8 + 16 + 16 + 8 + 8) `ReserveLiquidity` first few vars
     pub mint_pubkey: Pubkey,               // 0x78
     pub supply_vault: Pubkey,              // 0x98
     pub fee_vault: Pubkey,                 // 0xB8

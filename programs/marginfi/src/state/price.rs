@@ -29,8 +29,7 @@ use anchor_lang::prelude::borsh;
 use pyth_solana_receiver_sdk::PYTH_PUSH_ORACLE_ID;
 
 #[repr(u8)]
-#[cfg_attr(any(feature = "test", feature = "client"), derive(PartialEq, Eq))]
-#[derive(Copy, Clone, Debug, AnchorSerialize, AnchorDeserialize)]
+#[derive(Copy, Clone, Debug, AnchorSerialize, AnchorDeserialize, PartialEq, Eq)]
 pub enum OracleSetup {
     None,
     PythLegacy,
@@ -38,6 +37,8 @@ pub enum OracleSetup {
     PythPushOracle,
     SwitchboardPull,
     StakedWithPythPush,
+    KwrapPythPush,
+    KwrapSwitchboardPull,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -235,6 +236,63 @@ impl OraclePriceFeedAdapter {
                     Ok(price)
                 }
             }
+            OracleSetup::KwrapPythPush => {
+                check!(ais.len() == 2, MarginfiError::InvalidOracleAccount);
+
+                check!(
+                    ais[1].key == &bank_config.oracle_keys[1],
+                    MarginfiError::InvalidOracleAccount
+                );
+
+                // TODO load the reserve's locked price information...
+                // TODO compare the reserve's locked price information against the local oracle
+
+                // Note: mainnet/staging/devnet use "push" oracles, localnet uses legacy
+                if cfg!(any(
+                    feature = "mainnet-beta",
+                    feature = "staging",
+                    feature = "devnet"
+                )) {
+                    let account_info = &ais[0];
+
+                    check!(
+                        account_info.owner == &pyth_solana_receiver_sdk::id(),
+                        MarginfiError::InvalidOracleAccount
+                    );
+
+                    let price_feed_id = bank_config.get_pyth_push_oracle_feed_id().unwrap();
+                    let feed = PythPushOraclePriceFeed::load_checked(
+                        account_info,
+                        price_feed_id,
+                        clock,
+                        max_age,
+                    )?;
+
+                    // TODO return the internal Kamino Reserve price, not our local oracle price
+                    let price = OraclePriceFeedAdapter::PythPushOracle(feed);
+                    Ok(price)
+                } else {
+                    // Localnet only
+                    check!(
+                        ais[0].key == &bank_config.oracle_keys[0],
+                        MarginfiError::InvalidOracleAccount
+                    );
+
+                    let account_info = &ais[0];
+                    let feed = PythLegacyPriceFeed::load_checked(
+                        account_info,
+                        clock.unix_timestamp,
+                        max_age,
+                    )?;
+
+                    let price = OraclePriceFeedAdapter::PythLegacy(feed);
+                    Ok(price)
+                }
+            }
+            OracleSetup::KwrapSwitchboardPull => {
+                // TODO
+                panic!("not yet implemented.")
+            }
         }
     }
 
@@ -364,6 +422,30 @@ impl OraclePriceFeedAdapter {
 
                     Ok(())
                 }
+            }
+            OracleSetup::KwrapPythPush => {
+                check!(oracle_ais.len() == 1, MarginfiError::InvalidOracleAccount);
+
+                // Note: mainnet/staging/devnet use "push" oracles, localnet uses legacy
+                if live!() {
+                    PythPushOraclePriceFeed::check_ai_and_feed_id(
+                        &oracle_ais[0],
+                        bank_config.get_pyth_push_oracle_feed_id().unwrap(),
+                    )?;
+                } else {
+                    // Localnet only
+                    check!(
+                        oracle_ais[0].key == &bank_config.oracle_keys[0],
+                        MarginfiError::InvalidOracleAccount
+                    );
+
+                    PythLegacyPriceFeed::check_ais(&oracle_ais[0])?;
+                }
+                Ok(())
+            }
+            OracleSetup::KwrapSwitchboardPull => {
+                // TODO
+                panic!("not yet implemented")
             }
         }
     }

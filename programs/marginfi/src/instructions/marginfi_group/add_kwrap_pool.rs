@@ -2,11 +2,6 @@
 // stake pool to a group so users can borrow SOL against it
 use crate::{
     check,
-    constants::{
-        ASSET_TAG_STAKED, FEE_VAULT_AUTHORITY_SEED, FEE_VAULT_SEED, INSURANCE_VAULT_AUTHORITY_SEED,
-        INSURANCE_VAULT_SEED, LIQUIDITY_VAULT_AUTHORITY_SEED, LIQUIDITY_VAULT_SEED,
-        SPL_SINGLE_POOL_ID,
-    },
     events::{GroupEventHeader, LendingPoolBankCreateEvent},
     state::{
         kwrap_settings::KwrapConfigCompact,
@@ -15,7 +10,6 @@ use crate::{
             RiskTier,
         },
         price::OracleSetup,
-        staked_settings::StakedSettings,
     },
     MarginfiError, MarginfiResult,
 };
@@ -40,16 +34,23 @@ pub fn lending_pool_add_bank_kwrap(
 
     let mut bank = bank_loader.load_init()?;
     let group = ctx.accounts.marginfi_group.load()?;
-    let mut account_data = ctx.accounts.reserve.try_borrow_mut_data()?;
+    let reserve_key = &ctx.accounts.reserve.key();
+    let mut reserve_bytes = ctx.accounts.reserve.try_borrow_mut_data()?;
     // TODO validate the discriminator against hard-coded value...
     // Ignore the first 8 bytes (discriminator)
-    let (_discriminator, data) = account_data.split_at_mut(8);
+    let (_discriminator, data) = reserve_bytes.split_at_mut(8);
     let reserve = MinimalReserve::from_bytes(data);
 
     check!(
         reserve.mint_pubkey == bank_mint.key()
             && reserve.mint_decimals == (bank_mint.decimals as u64),
         MarginfiError::KwrapReserveMismatch
+    );
+
+    check!(
+        config.oracle_setup == OracleSetup::KwrapPythPush
+            || config.oracle_setup == OracleSetup::KwrapSwitchboardPull,
+        MarginfiError::InvalidOracleAccount
     );
 
     // These are placeholder values: kwrapped positions do not support borrowing and likely
@@ -73,7 +74,9 @@ pub fn lending_pool_add_bank_kwrap(
         deposit_limit: config.deposit_limit,
         interest_rate_config: default_ir_config.into(), // placeholder
         operational_state: BankOperationalState::Operational,
-        oracle_setup: OracleSetup::StakedWithPythPush,
+        oracle_setup: config.oracle_setup,
+        // Note: we also expect this key will be passed at remaining_accounts[0]. This oracle will
+        // sanity check the Kamino price.
         oracle_key: config.oracle, // becomes config.oracle_keys[0]
         borrow_limit: 0,
         risk_tier: RiskTier::Kwrap,
@@ -103,24 +106,11 @@ pub fn lending_pool_add_bank_kwrap(
 
     bank.config.validate()?;
 
-    // TODO shove the reserve and stuff into a special place...
+    // The Kamino Reserve will provide the cannonical pricing for this asset.
+    bank.config.oracle_keys[1] = *reserve_key;
 
-    // check!(
-    //     stake_pool.owner == &SPL_SINGLE_POOL_ID,
-    //     MarginfiError::StakePoolValidationFailed
-    // );
-    // let lst_mint = bank_mint.key();
-    // let stake_pool = stake_pool.key();
-    // let sol_pool = sol_pool.key();
-    // // The mint (for supply) and stake pool (for sol balance) are recorded for price calculation
-    // bank.config.oracle_keys[1] = lst_mint;
-    // bank.config.oracle_keys[2] = sol_pool;
-    // bank.config.validate_oracle_setup(
-    //     ctx.remaining_accounts,
-    //     Some(lst_mint),
-    //     Some(stake_pool),
-    //     Some(sol_pool),
-    // )?;
+    bank.config
+        .validate_oracle_setup(ctx.remaining_accounts, None, None, None)?;
 
     emit!(LendingPoolBankCreateEvent {
         header: GroupEventHeader {

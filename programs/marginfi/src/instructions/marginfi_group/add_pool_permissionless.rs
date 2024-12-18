@@ -23,7 +23,7 @@ use fixed_macro::types::I80F48;
 
 pub fn lending_pool_add_bank_permissionless(
     ctx: Context<LendingPoolAddBankPermissionless>,
-    _bank_seed: u64,
+    bank_seed: u64,
 ) -> MarginfiResult {
 
     // TODO debit the flat sol fee for native staked banks?
@@ -97,6 +97,8 @@ pub fn lending_pool_add_bank_permissionless(
         fee_vault_bump,
         fee_vault_authority_bump,
     );
+    bank.seed = bank_seed;
+    bank.bump = ctx.bumps.bank;
 
     bank.config.validate()?;
 

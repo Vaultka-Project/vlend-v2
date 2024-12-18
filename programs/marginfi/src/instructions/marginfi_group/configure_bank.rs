@@ -24,6 +24,9 @@ pub fn lending_pool_configure_bank(
             .validate_oracle_setup(ctx.remaining_accounts, None, None, None)?;
     }
 
+    // Note: editing the Kamino account of a kwrapped bank or staked pool accounts of a staked bank
+    // is not allowed after inception, though editing the oracle is allowed
+
     emit!(LendingPoolBankConfigureEvent {
         header: GroupEventHeader {
             marginfi_group: ctx.accounts.marginfi_group.key(),

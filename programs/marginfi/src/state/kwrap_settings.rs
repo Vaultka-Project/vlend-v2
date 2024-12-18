@@ -35,9 +35,7 @@ pub struct KwrapConfigCompact {
     // * liability_weight_init
     // * liability_weight_maint
     // * borrow_limit
-    _reserved0: [u8; 8],
-    _reserved1: [u8; 32],
-    _reserved2: [u8; 64],
+    _reserved0: [u8; 8]
 }
 
 impl KwrapConfigCompact {
@@ -68,8 +66,6 @@ impl KwrapConfigCompact {
             asset_tag,
             _pad0: [0; 4],
             _reserved0: [0; 8],
-            _reserved1: [0; 32],
-            _reserved2: [0; 64],
         }
     }
 }
@@ -89,8 +85,6 @@ impl Default for KwrapConfigCompact {
             asset_tag: ASSET_TAG_DEFAULT,
             _pad0: [0; 4],
             _reserved0: [0; 8],
-            _reserved1: [0; 32],
-            _reserved2: [0; 64],
         }
     }
 }

@@ -13,11 +13,11 @@ assert_struct_align!(MinimalReserve, 8);
 ///
 /// See comments for hex offset of each field, which MATCH EXACTLY the offsets in `Reserve`
 ///
-/// Solana handles u128 in a special way, making align 8, which causes a number of annoying issues
-/// when interacting with Rust, where a struct with u128 would align 16. We replace all u128 in
-/// Kamino's original struct with [u8; 16], which aligns 8, to sidestep all of these issues, rather
-/// than dealing with compiler voodo. Notably, the size (8616) is not a multiple of 16, which is a
-/// huge headache.
+/// Solana handles u128 in a special way, making them align 8, which causes a number of annoying
+/// issues when interacting with Rust, where a struct with u128 would align 16. We replace all u128
+/// in Kamino's original struct with [u8; 16], which aligns 8, to sidestep all of these issues,
+/// rather than dealing with compiler voodo. Use a helper function to extract the actualy u128
+/// value. Notably, the size (8616) is not a multiple of 16, which is a huge headache.
 #[derive(Debug, PartialEq, Pod, Zeroable, Copy, Clone)]
 #[repr(C)]
 pub struct MinimalReserve {

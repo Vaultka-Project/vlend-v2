@@ -464,8 +464,13 @@ pub struct Bank {
     pub fee_vault: Pubkey,
     pub fee_vault_bump: u8,
     pub fee_vault_authority_bump: u8,
+    /// Bump used to derive this bank's PDA. Not backwards compatible. Banks created prior to the
+    /// addition of Kwrapped banks may use a default (0) value instead of their actual bump. Banks
+    /// that do not have seeds (created with a keypair prior to addition of pda-banks) will also
+    /// have a Default (0) value
+    pub bump: u8,
 
-    pub _pad2: [u8; 6], // 2x u8 + 6 = 8
+    pub _pad2: [u8; 5], // 2x u8 + 6 = 8
 
     /// Fees collected and pending withdraw for the `fee_vault`
     pub collected_group_fees_outstanding: WrappedI80F48,
@@ -493,7 +498,14 @@ pub struct Bank {
     /// Fees collected and pending withdraw for the `FeeState.global_fee_wallet`'s cannonical ATA for `mint`
     pub collected_program_fees_outstanding: WrappedI80F48,
 
-    pub _padding_0: [[u64; 2]; 27],
+    /// Seed used to derive the bank's PDA. Not backwards compatible. Banks created prior to the
+    /// addition of Kwrapped banks may use a default (0) value instead of their actual seeds. Banks
+    /// that do not have seeds (created with a keypair prior to addition of pda-banks) will also
+    /// have a Default (0) value
+    pub seed: u64,
+    pub placeholder0: u64,
+
+    pub _padding_0: [[u64; 2]; 26],
     pub _padding_1: [[u64; 2]; 32], // 16 * 2 * 32 = 1024B
 }
 

@@ -111,6 +111,7 @@ describe("Lending pool add bank (add bank to group)", () => {
     assert.equal(bank.feeVaultBump, feeVaultBump);
     assert.equal(bank.feeVaultAuthorityBump, feeAuthBump);
 
+    assert.equal(bank.bump, 0); // legacy banks don't have a bump
     assertKeyDefault(bank.emissionsMint);
 
     // Constants/Defaults...
@@ -154,6 +155,7 @@ describe("Lending pool add bank (add bank to group)", () => {
     assert.equal(config.oracleMaxAge, 100);
 
     assertI80F48Equal(bank.collectedProgramFeesOutstanding, 0);
+    assertBNEqual(bank.seed, 0); // legacy banks don't use a seed
   });
 
   it("(admin) Add bank (token A) - happy path", async () => {

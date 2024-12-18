@@ -565,7 +565,9 @@ async fn bank_field_values_reg() -> anyhow::Result<()> {
     );
     assert_eq!(bank.fee_vault_bump, 255);
     assert_eq!(bank.fee_vault_authority_bump, 253);
-    assert_eq!(bank._pad2, [0; 6]);
+    // Legacy banks use default (0) for the bump, even if they are actually derived with a different bump
+    assert_eq!(bank.bump, 0);
+    assert_eq!(bank._pad2, [0; 5]);
     assert_eq!(
         I80F48::from(bank.collected_group_fees_outstanding),
         I80F48::from_str("1015697146.551430542063226").unwrap()
@@ -669,7 +671,11 @@ async fn bank_field_values_reg() -> anyhow::Result<()> {
         I80F48::from_str("0").unwrap()
     );
 
-    assert_eq!(bank._padding_0, [[0, 0]; 27]);
+    // Legacy banks use default (0) for the seed, even if they are actually derived with a different seed
+    assert_eq!(bank.seed, 0);
+    assert_eq!(bank.placeholder0, 0);
+
+    assert_eq!(bank._padding_0, [[0, 0]; 26]);
     assert_eq!(bank._padding_1, [[0, 0]; 32]);
 
     Ok(())

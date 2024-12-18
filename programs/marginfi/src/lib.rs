@@ -69,10 +69,10 @@ pub mod marginfi {
 
     pub fn lending_pool_add_bank_kwrapped(
         ctx: Context<LendingPoolAddBankKwrap>,
-        config: KwrapConfigCompact,
         bank_seed: u64,
+        config: KwrapConfigCompact,
     ) -> MarginfiResult {
-        marginfi_group::lending_pool_add_bank_kwrap(ctx, config, bank_seed)
+        marginfi_group::lending_pool_add_bank_kwrap(ctx, bank_seed, config)
     }
 
     pub fn lending_pool_configure_bank(

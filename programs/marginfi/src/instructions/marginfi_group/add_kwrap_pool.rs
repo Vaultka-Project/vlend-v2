@@ -20,8 +20,8 @@ use kwrap::{constants::KAMINO_ID, state::MinimalReserve};
 
 pub fn lending_pool_add_bank_kwrap(
     ctx: Context<LendingPoolAddBankKwrap>,
+    bank_seed: u64,
     config: KwrapConfigCompact,
-    _bank_seed: u64,
 ) -> MarginfiResult {
     // Note: Kwrap banks don't need to debit the flat SOL fee because these will always be
     // first-party pools owned by mrgn and never permissionless pools
@@ -103,6 +103,8 @@ pub fn lending_pool_add_bank_kwrap(
         0,
         0,
     );
+    bank.seed = bank_seed;
+    bank.bump = ctx.bumps.bank;
 
     bank.config.validate()?;
 
@@ -155,8 +157,9 @@ pub struct LendingPoolAddBankKwrap<'info> {
     pub bank: AccountLoader<'info, Bank>,
 
     /// CHECK: Only checks that this is owned by the Kamino program. Loaded with bytemuck wizardry,
-    /// which generally fails if the account is the wrong size. Checks that the `bank_mint` is the
-    /// same as the mint used by the Reserve
+    /// which generally fails if the account is the wrong size. Sanity checks that the `bank_mint`
+    /// is the same as the mint used by the Reserve, but otherwise it is ENTIRELY THE RESPONSIBILITY
+    /// OF THE CALLER to ensure this reserve uses the same kind of asset as the provided oracle
     #[account(owner = KAMINO_ID)]
     pub reserve: UncheckedAccount<'info>,
 

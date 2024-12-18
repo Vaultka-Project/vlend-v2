@@ -1,3 +1,20 @@
+/*
+Note: Due to some Anchor issue, the errors here do not get built into the IDL, and must be manually inserted. 
+Open the latest good idl.json and copy the text between:
+
+"errors": [
+  {
+    "code": 6000,
+    "name": "MathError",
+    "msg": "Math error"
+  },
+  ...etc....
+  ],
+
+  From that existing JSON file, changed/append items as needed (chat GPT works great for this) and then insert that into the 
+  generated idl.json until whatever issue prevents Anchor from reading these is resolved
+*/
+
 use anchor_lang::prelude::*;
 
 #[error_code]

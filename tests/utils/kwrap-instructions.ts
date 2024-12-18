@@ -1,6 +1,9 @@
-import { PublicKey } from "@solana/web3.js";
+import { AccountMeta, PublicKey, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { KaminoWrap } from "../../target/types/kamino_wrap";
 import { BN, Program } from "@coral-xyz/anchor";
+import { BankConfigKwrap } from "./types";
+import { Marginfi } from "../../target/types/marginfi";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export type InitKwrapUserArgs = {
   user: PublicKey;
@@ -190,6 +193,73 @@ export const existingDeposit = (
       liquidityTokenProgram: args.liquidityTokenProgram,
       // instructionSysvarAccount: // (hard coded)
     })
+    .instruction();
+
+  return ix;
+};
+
+//************************************************************************* */
+//*************************MRGN LEND INSTRUCTIONS************************** */
+//************************************************************************* */
+
+/**
+ * * admin/feePayer - must sign
+ * * bank - derive resulting bank with (group, bankMint, seed)
+ */
+export type AddKwrapBankArgs = {
+  marginfiGroup: PublicKey;
+  feePayer: PublicKey;
+  bankMint: PublicKey;
+  tokenProgram: PublicKey;
+  config: BankConfigKwrap;
+  seed: number;
+};
+
+export const addKwrapBank = (program: Program<Marginfi>, args: AddKwrapBankArgs) => {
+  // const id = program.programId;
+  // const bank = args.bank;
+  const config = args.config;
+
+  // Note: oracle is passed as a key in config AND as an acc in remaining accs
+  const oracleMeta: AccountMeta = {
+    pubkey: config.oracle,
+    isSigner: false,
+    isWritable: false,
+  };
+
+  // Note: reserve is passed directly in accounts, which is slightly different from other setup
+  // models where all oracle-checked accounts are passed in remaining accounts.
+
+  const ix = program.methods
+    .lendingPoolAddBankKwrapped(
+      new BN(args.seed),
+      {
+        market: config.market,
+        reserve: config.reserve,
+        oracle: config.oracle,
+        assetWeightInit: config.assetWeightInit,
+        assetWeightMaint: config.assetWeightMaint,
+        depositLimit: config.depositLimit,
+        totalAssetValueInitLimit: config.totalAssetValueInitLimit,
+        oracleSetup: config.oracleSetup,
+        oracleMaxAge: config.oracleMaxAge,
+        assetTag: config.assetTag,
+        pad0: [0, 0, 0, 0],
+        reserved0: [0, 0, 0, 0, 0, 0, 0, 0],
+      },
+    )
+    .accounts({
+      marginfiGroup: args.marginfiGroup,
+      // admin: // implied from group
+      feePayer: args.feePayer,
+      bankMint: args.bankMint,
+      // bank: // derived from (group, mint, seed)
+      reserve: config.reserve,
+      // rent: SYSVAR_RENT_PUBKEY
+      tokenProgram: args.tokenProgram,
+      // systemProgram: SystemProgram.programId,
+    })
+    .remainingAccounts([oracleMeta])
     .instruction();
 
   return ix;

@@ -36,10 +36,10 @@ export const ASSET_TAG_STAKED = 2;
 export const ACCOUNT_FREE_TO_WITHDRAW = 1;
 
 /**
- * The default bank config has
+ * The default bank config has:
  * * all weights are 1
  * * state = operational, risk tier = collateral
- * * uses the given oracle, assumes it's = pythLegacy
+ * * uses the given oracle, assumes it's = pythLegacy, max age 100
  * * 100_000_000_000 deposit/borrow limit
  * * 1_000_000_000_000 total asset value limit
  * * asset tag default (`ASSET_TAG_DEFAULT`)
@@ -67,6 +67,40 @@ export const defaultBankConfig = (oracleKey: PublicKey) => {
     assetTag: ASSET_TAG_DEFAULT,
     totalAssetValueInitLimit: new BN(1_000_000_000_000),
     oracleMaxAge: 100,
+  };
+  return config;
+};
+
+/**
+ * The default kwrapped bank has:
+ * * all weights are 1 (Note: borrow weights are arbitrary, cannot borrow kwrapped assets)
+ * * uses Pyth Push oracles, max age 100
+ * * 100_000_000_000 deposit/borrow limit
+ * * 1_000_000_000_000 total asset value limit
+ * * asset tag default (`ASSET_TAG_DEFAULT`)
+ * @param market
+ * @param reserve
+ * @param oracle
+ * @returns
+ */
+export const defaultKwrapBankConfig = (
+  market: PublicKey,
+  reserve: PublicKey,
+  oracle: PublicKey
+) => {
+  let config: BankConfigKwrap = {
+    market: market,
+    reserve: reserve,
+    oracle: oracle,
+    assetWeightInit: I80F48_ONE,
+    assetWeightMaint: I80F48_ONE,
+    depositLimit: new BN(100_000_000_000),
+    totalAssetValueInitLimit: new BN(1_000_000_000_000),
+    oracleSetup: {
+      kwrapPythPush: undefined,
+    },
+    oracleMaxAge: 100,
+    assetTag: ASSET_TAG_DEFAULT,
   };
   return config;
 };
@@ -181,6 +215,36 @@ export const defaultStakedInterestSettings = (oracle: PublicKey) => {
     },
   };
   return settings;
+};
+
+// TODO remove when package updates
+/** OracleSetupRaw with support for switchboard pull, StakedWithPythPush, KwrapPythPush, KwrapSwitchboardPull */
+export type OracleSetupRawWithKwrap =
+  | { none: {} }
+  | { pythLegacy: {} }
+  | { switchboardV2: {} }
+  | { pythPushOracle: {} }
+  | { switchboardPull: {} }
+  | { stakedWithPythPush: {} }
+  | { kwrapPythPush: {} }
+  | { kwrapSwitchboardPull: {} };
+
+// TODO remove when package updates
+export type BankConfigKwrap = {
+  market: PublicKey;
+  reserve: PublicKey;
+  oracle: PublicKey;
+
+  assetWeightInit: WrappedI80F48;
+  assetWeightMaint: WrappedI80F48;
+
+  depositLimit: BN;
+  totalAssetValueInitLimit: BN;
+
+  /** `KwrapPythPush` (6) or `KwrapSwitchboardPull` (7) */
+  oracleSetup: OracleSetupRawWithKwrap;
+  oracleMaxAge: number;
+  assetTag: number;
 };
 
 // TODO remove when package updates

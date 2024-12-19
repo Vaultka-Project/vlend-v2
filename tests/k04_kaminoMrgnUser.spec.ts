@@ -227,6 +227,10 @@ describe("Init kwrap-controlled Kamino user", () => {
     const info = kwrapAccount.marketInfo[0];
     assertKeysEqual(info.market, marketKey);
     assertKeysEqual(info.obligation, obligationKey);
+    let collatAmounts = info.collaterizatedAmounts;
+    for (let k = 0; k < collatAmounts.length; k++) {
+      assertBNEqual(collatAmounts[k], 0);
+    }
     assert.equal(info.flags, ACCOUNT_FREE_TO_WITHDRAW);
   }
 

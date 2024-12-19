@@ -119,7 +119,7 @@ async fn add_bank_success() -> anyhow::Result<()> {
             assert_eq!(collected_program_fees_outstanding, I80F48!(0.0).into());
             assert_eq!(seed, 0);
 
-            assert_eq!(_padding_0, <[[u64; 2]; 26] as Default>::default());
+            assert_eq!(_padding_0, <[[u64; 2]; 24] as Default>::default());
             assert_eq!(_padding_1, <[[u64; 2]; 32] as Default>::default());
 
             // this is the only loosely checked field
@@ -256,7 +256,7 @@ async fn add_bank_with_seed_success() -> anyhow::Result<()> {
             assert_eq!(collected_program_fees_outstanding, I80F48!(0.0).into());
             assert_eq!(seed, bank_seed);
 
-            assert_eq!(_padding_0, <[[u64; 2]; 26] as Default>::default());
+            assert_eq!(_padding_0, <[[u64; 2]; 24] as Default>::default());
             assert_eq!(_padding_1, <[[u64; 2]; 32] as Default>::default());
 
             // this is the only loosely checked field

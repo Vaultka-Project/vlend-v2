@@ -35,10 +35,10 @@ pub fn lending_pool_add_bank_kwrap(
     let mut bank = bank_loader.load_init()?;
     let group = ctx.accounts.marginfi_group.load()?;
     let reserve_key = &ctx.accounts.reserve.key();
-    let mut reserve_bytes = ctx.accounts.reserve.try_borrow_mut_data()?;
-    // TODO validate the discriminator against hard-coded value...
+    let reserve_bytes = ctx.accounts.reserve.try_borrow_data()?;
+    // TODO validate the discriminator against hard-coded value (not important but should do)...
     // Ignore the first 8 bytes (discriminator)
-    let (_discriminator, data) = reserve_bytes.split_at_mut(8);
+    let (_discriminator, data) = reserve_bytes.split_at(8);
     let reserve = MinimalReserve::from_bytes(data);
 
     check!(
@@ -105,10 +105,12 @@ pub fn lending_pool_add_bank_kwrap(
     );
     bank.seed = bank_seed;
     bank.bump = ctx.bumps.bank;
+    bank.reserve = *reserve_key;
 
     bank.config.validate()?;
 
     // The Kamino Reserve will provide the cannonical pricing for this asset.
+    // TODO we already store this in a field on the bank so we may not want to duplicate here...
     bank.config.oracle_keys[1] = *reserve_key;
 
     bank.config
@@ -159,7 +161,9 @@ pub struct LendingPoolAddBankKwrap<'info> {
     /// CHECK: Only checks that this is owned by the Kamino program. Loaded with bytemuck wizardry,
     /// which generally fails if the account is the wrong size. Sanity checks that the `bank_mint`
     /// is the same as the mint used by the Reserve, but otherwise it is ENTIRELY THE RESPONSIBILITY
-    /// OF THE CALLER to ensure this reserve uses the same kind of asset as the provided oracle
+    /// OF THE CALLER to ensure this reserve uses the same kind of asset as the provided oracle and
+    /// the caller can, if they wish, do something like pass the SOL oracle to an mSOL Kamino
+    /// reserve
     #[account(owner = KAMINO_ID)]
     pub reserve: UncheckedAccount<'info>,
 

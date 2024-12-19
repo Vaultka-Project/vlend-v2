@@ -89,6 +89,8 @@ export const MARKET = "market";
 export const USDC_RESERVE = "usdc_reserve";
 /** Kamino Token A Reserve */
 export const TOKEN_A_RESERVE = "token_a_reserve";
+/** mrgn USDC bank trading on `USDC_RESERVE` (the reserve for ecosystem.usdcMint) */
+export const KWRAPPED_USDC_BANK = "kwrap_usdc_bank";
 
 export const mochaHooks = {
   beforeAll: async () => {

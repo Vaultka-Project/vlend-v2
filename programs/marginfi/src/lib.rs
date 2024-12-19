@@ -11,9 +11,9 @@ pub mod utils;
 use anchor_lang::prelude::*;
 use instructions::*;
 use prelude::*;
+use state::kwrap_settings::KwrapConfigCompact;
 use state::marginfi_group::WrappedI80F48;
 use state::marginfi_group::{BankConfigCompact, BankConfigOpt};
-use state::kwrap_settings::KwrapConfigCompact;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "mainnet-beta")] {
@@ -119,11 +119,19 @@ pub mod marginfi {
         marginfi_account::initialize_account(ctx)
     }
 
+    /// Deposit all asset types except Kamino-wrapped collateral
     pub fn lending_account_deposit<'info>(
         ctx: Context<'_, '_, 'info, 'info, LendingAccountDeposit<'info>>,
         amount: u64,
     ) -> MarginfiResult {
         marginfi_account::lending_account_deposit(ctx, amount)
+    }
+
+    /// Deposit Kamino-wrapped collateral
+    pub fn lending_account_register_kwrap<'info>(
+        ctx: Context<'_, '_, 'info, 'info, LendingAccountRegisterKwrap<'info>>,
+    ) -> MarginfiResult {
+        marginfi_account::lending_account_register_kwrap(ctx)
     }
 
     pub fn lending_account_repay<'info>(
@@ -141,6 +149,8 @@ pub mod marginfi {
     ) -> MarginfiResult {
         marginfi_account::lending_account_withdraw(ctx, amount, withdraw_all)
     }
+
+    // TODO kwrap withdraw...
 
     pub fn lending_account_borrow<'info>(
         ctx: Context<'_, '_, 'info, 'info, LendingAccountBorrow<'info>>,

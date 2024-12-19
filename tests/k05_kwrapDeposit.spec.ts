@@ -39,6 +39,7 @@ import {
 } from "@mrgnlabs/mrgn-common";
 import {
   assertBNApproximately,
+  assertBNEqual,
   assertKeysEqual,
   getTokenBalance,
 } from "./utils/genericTests";
@@ -164,9 +165,20 @@ describe("Deposit from Kamino account", () => {
       expected.valueSf,
       100_000
     );
+
+    // The position hasn't been collateralized yet, so collateralized_amounts is still blank
+    let kwrapAcc = await users[0].kwrapProgram.account.userAccount.fetch(
+      kwrapAccount
+    );
+    for (let i = 0; i < kwrapAcc.marketInfo.length; i++) {
+      let collatAmounts = kwrapAcc.marketInfo[i].collaterizatedAmounts;
+      for (let k = 0; k < collatAmounts.length; k++) {
+        assertBNEqual(collatAmounts[k], 0);
+      }
+    }
   });
 
-  // The only notable difference here is that the obligation must now incldue the usdc reserve in
+  // The only notable difference here is that the obligation must now include the usdc reserve in
   // remaining_accounts when refreshing.
   it("(user 0) deposits USDC into kwrap-owned Kamino obligation (again) - happy path", async () => {
     const amt = new BN(depositAmount * 10 ** ecosystem.usdcDecimals);
@@ -216,16 +228,16 @@ describe("Deposit from Kamino account", () => {
   });
 
   /*
-  We would like to atomically withdraw from the user's Kamino account and immediately deposit into
-  their mrgn-wrapped equivalent, but we can't because Kamino requires that refresh instructions
-  (which are checked by introspection) appear in a paritcular spot in the instruction. Deposit wants
-  the refresh for the user's obligation at the first index after refreshing reserves, and Withdraw
-  wants the refresh for the wrapped obligation in the same slot, rendering them incompatible.
+    We would like to atomically withdraw from the user's Kamino account and immediately deposit into
+    their mrgn-wrapped equivalent, but we can't because Kamino requires that refresh instructions
+    (which are checked by introspection) appear in a paritcular spot in the instruction. Deposit
+    wants the refresh for the user's obligation at the first index after refreshing reserves, and
+    Withdraw wants the refresh for the wrapped obligation in the same slot, rendering them
+    incompatible.
 
-  Currently, if the user already has a Kamino position, we must send a tx to withdraw it, transfer
-  that balance to the pda-owned usdc account, and then call freshDeposit.
+    Currently, if the user already has a Kamino position, we must send a tx to withdraw it, transfer
+    that balance to the pda-owned usdc account, and then call freshDeposit.
   */
-
   it("(user 0) deposits USDC from Kamino obligation to kwrap-owned obligation - happy path", async () => {
     const amt = new BN(depositAmount * 10 ** ecosystem.usdcDecimals);
     const market = kaminoAccounts.get(MARKET);

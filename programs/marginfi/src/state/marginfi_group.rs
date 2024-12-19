@@ -505,7 +505,10 @@ pub struct Bank {
     pub seed: u64,
     pub placeholder0: u64,
 
-    pub _padding_0: [[u64; 2]; 26],
+    /// RiskTier::Kwrap only, otherwise default. Caches the key of the Kamino reserve that is collateralized by this bank.
+    pub reserve: Pubkey,
+
+    pub _padding_0: [[u64; 2]; 24],
     pub _padding_1: [[u64; 2]; 32], // 16 * 2 * 32 = 1024B
 }
 

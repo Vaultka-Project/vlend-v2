@@ -1,41 +1,26 @@
 import {
-  getProvider,
-  AnchorProvider,
-  Wallet,
   Program,
   workspace,
   BN,
 } from "@coral-xyz/anchor";
-import { KaminoWrap } from "../target/types/kamino_wrap";
-import { KaminoLending } from "./fixtures/kamino_lending";
-import idl from "./fixtures/kamino_lending.json";
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
 import {
-  bankrunContext,
-  bankrunProgram,
-  banksClient,
   ecosystem,
-  globalFeeWallet,
   groupAdmin,
   kaminoAccounts,
+  KWRAPPED_USDC_BANK,
   marginfiGroup,
   MARKET,
   oracles,
-  PROGRAM_FEE_FIXED,
-  PROGRAM_FEE_RATE,
   USDC_RESERVE,
   verbose,
 } from "./rootHooks";
 import {
   assertBNEqual,
-  assertI80F48Approx,
   assertI80F48Equal,
-  assertKeyDefault,
   assertKeysEqual,
 } from "./utils/genericTests";
 import { Marginfi } from "../target/types/marginfi";
-import { groupInitialize } from "./utils/group-instructions";
-import { getBankrunBlockhash } from "./utils/spl-staking-utils";
 import { ASSET_TAG_DEFAULT, defaultKwrapBankConfig } from "./utils/types";
 import { addKwrapBank } from "./utils/kwrap-instructions";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -44,14 +29,6 @@ import { assert } from "chai";
 
 describe("Init kwrapped banks", () => {
   const mrgnProgram = workspace.Marginfi as Program<Marginfi>;
-  const provider = getProvider() as AnchorProvider;
-  const wallet = provider.wallet as Wallet;
-
-  const klendProgram = new Program<KaminoLending>(
-    idl as KaminoLending,
-    new AnchorProvider(provider.connection, wallet, {})
-  );
-  const kWrapProgram = workspace.kamino_wrap as Program<KaminoWrap>;
 
   let market: PublicKey, usdcReserve: PublicKey, usdcOracle: PublicKey;
   const seed = 42;
@@ -66,22 +43,18 @@ describe("Init kwrapped banks", () => {
     let defaultConfig = defaultKwrapBankConfig(market, usdcReserve, usdcOracle);
     const now = Date.now() / 1000;
 
-    try {
-      await groupAdmin.mrgnProgram.provider.sendAndConfirm!(
-        new Transaction().add(
-          await addKwrapBank(groupAdmin.mrgnProgram, {
-            marginfiGroup: marginfiGroup.publicKey,
-            feePayer: groupAdmin.wallet.publicKey,
-            bankMint: ecosystem.usdcMint.publicKey,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            config: defaultConfig,
-            seed: seed,
-          })
-        )
-      );
-    } catch (err) {
-      console.log(err);
-    }
+    await groupAdmin.mrgnProgram.provider.sendAndConfirm!(
+      new Transaction().add(
+        await addKwrapBank(groupAdmin.mrgnProgram, {
+          marginfiGroup: marginfiGroup.publicKey,
+          feePayer: groupAdmin.wallet.publicKey,
+          bankMint: ecosystem.usdcMint.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          config: defaultConfig,
+          seed: seed,
+        })
+      )
+    );
 
     const [bankKey, bump] = deriveBankWithSeed(
       mrgnProgram.programId,
@@ -89,6 +62,8 @@ describe("Init kwrapped banks", () => {
       ecosystem.usdcMint.publicKey,
       new BN(seed)
     );
+
+    kaminoAccounts.set(KWRAPPED_USDC_BANK, bankKey);
 
     if (verbose) {
       console.log("*init kwrapped USDC bank " + bankKey);
@@ -122,6 +97,10 @@ describe("Init kwrapped banks", () => {
 
     assertBNEqual(bank.seed, seed);
 
+    assertKeysEqual(bank.reserve, usdcReserve);
+
     // Note: Fields not checked above do not apply to this type of bank and could be any value.
   });
+
+  // We might need other Kwrapped banks here, put them here eventually...
 });

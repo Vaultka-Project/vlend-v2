@@ -5,7 +5,7 @@ use crate::{
     prelude::{MarginfiError, MarginfiGroup, MarginfiResult},
     state::{
         marginfi_account::{BankAccountWrapper, MarginfiAccount, DISABLED_FLAG},
-        marginfi_group::Bank,
+        marginfi_group::{Bank, RiskTier},
     },
     utils,
 };
@@ -49,6 +49,11 @@ pub fn lending_account_repay<'info>(
     check!(
         !marginfi_account.get_flag(DISABLED_FLAG),
         MarginfiError::AccountDisabled
+    );
+
+    check!(
+        !(bank.config.risk_tier == RiskTier::Kwrap),
+        MarginfiError::CantBorrowKwrappedAssets
     );
 
     bank.accrue_interest(

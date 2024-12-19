@@ -215,7 +215,10 @@ export type AddKwrapBankArgs = {
   seed: number;
 };
 
-export const addKwrapBank = (program: Program<Marginfi>, args: AddKwrapBankArgs) => {
+export const addKwrapBank = (
+  program: Program<Marginfi>,
+  args: AddKwrapBankArgs
+) => {
   // const id = program.programId;
   // const bank = args.bank;
   const config = args.config;
@@ -231,23 +234,20 @@ export const addKwrapBank = (program: Program<Marginfi>, args: AddKwrapBankArgs)
   // models where all oracle-checked accounts are passed in remaining accounts.
 
   const ix = program.methods
-    .lendingPoolAddBankKwrapped(
-      new BN(args.seed),
-      {
-        market: config.market,
-        reserve: config.reserve,
-        oracle: config.oracle,
-        assetWeightInit: config.assetWeightInit,
-        assetWeightMaint: config.assetWeightMaint,
-        depositLimit: config.depositLimit,
-        totalAssetValueInitLimit: config.totalAssetValueInitLimit,
-        oracleSetup: config.oracleSetup,
-        oracleMaxAge: config.oracleMaxAge,
-        assetTag: config.assetTag,
-        pad0: [0, 0, 0, 0],
-        reserved0: [0, 0, 0, 0, 0, 0, 0, 0],
-      },
-    )
+    .lendingPoolAddBankKwrapped(new BN(args.seed), {
+      market: config.market,
+      reserve: config.reserve,
+      oracle: config.oracle,
+      assetWeightInit: config.assetWeightInit,
+      assetWeightMaint: config.assetWeightMaint,
+      depositLimit: config.depositLimit,
+      totalAssetValueInitLimit: config.totalAssetValueInitLimit,
+      oracleSetup: config.oracleSetup,
+      oracleMaxAge: config.oracleMaxAge,
+      assetTag: config.assetTag,
+      pad0: [0, 0, 0, 0],
+      reserved0: [0, 0, 0, 0, 0, 0, 0, 0],
+    })
     .accounts({
       marginfiGroup: args.marginfiGroup,
       // admin: // implied from group
@@ -260,6 +260,37 @@ export const addKwrapBank = (program: Program<Marginfi>, args: AddKwrapBankArgs)
       // systemProgram: SystemProgram.programId,
     })
     .remainingAccounts([oracleMeta])
+    .instruction();
+
+  return ix;
+};
+
+/**
+ * * user/authority of the marginfiAccount/userKwrapAccount - must sign
+ */
+export type RegisterKwrapDepositArgs = {
+  marginfiAccount: PublicKey;
+  bank: PublicKey;
+  userKwrapAccount: PublicKey;
+  obligation: PublicKey;
+};
+
+export const registerKwrapDeposit = (
+  program: Program<Marginfi>,
+  args: RegisterKwrapDepositArgs
+) => {
+  const ix = program.methods
+    .lendingAccountRegisterKwrap()
+    .accounts({
+      // group: // implied from marginfi_account
+      marginfiAccount: args.marginfiAccount,
+      // authority: // implied from marginfiAccount
+      bank: args.bank,
+      userKwrapAccount: args.userKwrapAccount,
+      obligation: args.obligation,
+      // reserve: // implied from bank
+      // kwrapProgram: // hard coded
+    })
     .instruction();
 
   return ix;

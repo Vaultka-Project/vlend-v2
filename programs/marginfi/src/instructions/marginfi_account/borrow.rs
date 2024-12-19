@@ -6,7 +6,7 @@ use crate::{
     prelude::{MarginfiError, MarginfiGroup, MarginfiResult},
     state::{
         marginfi_account::{BankAccountWrapper, MarginfiAccount, RiskEngine, DISABLED_FLAG},
-        marginfi_group::{Bank, BankVaultType},
+        marginfi_group::{Bank, BankVaultType, RiskTier},
     },
     utils::{self, validate_asset_tags},
 };
@@ -64,6 +64,10 @@ pub fn lending_account_borrow<'info>(
         let mut bank = bank_loader.load_mut()?;
 
         validate_asset_tags(&bank, &marginfi_account)?;
+        check!(
+            !(bank.config.risk_tier == RiskTier::Kwrap),
+            MarginfiError::CantBorrowKwrappedAssets
+        );
 
         let liquidity_vault_authority_bump = bank.liquidity_vault_authority_bump;
         let origination_fee_rate: I80F48 = bank

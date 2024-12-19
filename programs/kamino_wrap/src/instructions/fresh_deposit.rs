@@ -1,5 +1,7 @@
 // Wraps an simple deposit to Kamino of new assets into the program-owner user account. Use this
 // instruction when depositing new assets into Kamino
+use crate::errors::ErrorCode;
+use crate::state::MinimalObligation;
 use crate::{constants::KAMINO_ID, state::UserAccount, user_account_signer_seeds};
 use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::{token::Token, token_interface::TokenInterface};
@@ -8,6 +10,10 @@ use solana_program::{instruction::Instruction, program::invoke_signed};
 use super::deposit_ix_data;
 
 pub fn fresh_deposit(ctx: Context<FreshDeposit>, liquidity_amount: u64) -> Result<()> {
+    if liquidity_amount == 0 {
+        panic!("tried to depost 0, don't waste the compute");
+    }
+    
     {
         // Note: clone() is required here to avoid re-borrowing as mut of `AccountMeta::new`
         let user_account = ctx.accounts.user_account.load()?.clone();
@@ -43,6 +49,31 @@ pub fn fresh_deposit(ctx: Context<FreshDeposit>, liquidity_amount: u64) -> Resul
 
     let mut user_account = ctx.accounts.user_account.load_mut()?;
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
+
+    // Update the deposit amount if this is already a registered position
+    let market_info = user_account.find_info_by_obligation_mut(&ctx.accounts.obligation.key());
+    if market_info.is_none() {
+        return err!(ErrorCode::MarketInfoDoesNotExist);
+    }
+    let market_info = market_info.unwrap();
+
+    let obligation_bytes = ctx.accounts.obligation.try_borrow_data()?;
+    // TODO validate the discriminator against hard-coded value (not important but should do)...
+    // Ignore the first 8 bytes (discriminator)
+    let (_discriminator, data) = obligation_bytes.split_at(8);
+    let obligation = MinimalObligation::from_bytes(data);
+
+    let deposit_maybe = obligation.find_deposit_by_reserve(&ctx.accounts.reserve.key());
+    if deposit_maybe.is_none() {
+        return err!(ErrorCode::DepositDoesNotExist);
+    }
+    let (i, deposit) = deposit_maybe.unwrap();
+    // If this position has is active (has non-zero collateralized), update it. Else, do nothing
+    if market_info.collaterizated_amounts[i] != 0 {
+        market_info.collaterizated_amounts[i] = deposit.deposited_amount;
+    } else {
+        // do nothing
+    }
 
     Ok(())
 }
@@ -92,8 +123,8 @@ pub struct FreshDeposit<'info> {
         // If has_one is ever improved, we might infer these accounts.
         constraint = {
             let acc = user_account.load()?;
-            let info = acc.find_info_by_market(lending_market.key);
-            info.is_some() && info.unwrap().obligation == *obligation.key
+            let info = acc.find_info_by_obligation(obligation.key);
+            info.is_some() && info.unwrap().market == *lending_market.key
         }
     )]
     pub user_account: AccountLoader<'info, UserAccount>,

@@ -14,4 +14,8 @@ pub enum ErrorCode {
     DuplicateMarket, // 6004
     #[msg("This account does not have market info with that obligation or market.")]
     MarketInfoDoesNotExist, // 6005
+    #[msg("This obligation has no reserve matching that key.")]
+    DepositDoesNotExist, // 6006
+    #[msg("This position was already collateralized.")]
+    AlreadyCollateralized, // 6007
 }

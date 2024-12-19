@@ -4,15 +4,17 @@ use bytemuck::{Pod, Zeroable};
 use crate::errors::ErrorCode;
 use crate::{assert_struct_align, assert_struct_size};
 
-assert_struct_size!(UserAccount, 1464);
+assert_struct_size!(UserAccount, 1784);
 assert_struct_align!(UserAccount, 8);
 
 pub const ACCOUNT_FREE_TO_WITHDRAW: u8 = 0b00000001;
 
 pub const USER_ACCOUNT_PADDING: usize = 512;
 
-/// The central account management structure for a user's Kamino positions to be used as collateral on mrgn
-/// * Rent ~= 0.011 SOL
+/// The central account management structure for a user's Kamino positions to be used as collateral
+/// on mrgn. Typically, a mrgn user will have one kWrap UserAccount per Mrgn Account, and will
+/// deposit any Kamino assets they want to use as collateral with this account.
+/// * Rent ~= 0.013 SOL
 #[account(zero_copy)]
 #[repr(C)]
 pub struct UserAccount {
@@ -34,7 +36,7 @@ pub struct UserAccount {
     /// * Not sorted in any particular order
     /// * Kamino has 5 "primary" markets as of November 2024 (Jito, JLP, Main, Altcoin, Ethena). It
     ///   is very unlikely that the vast majority of users will use all 5 slots. We assume 90% of
-    ///   users will use 2 or fewer Kamino markets
+    ///   users will use 2 or fewer Kamino markets, and 99.99% use less than 5
     /// * If full, adding a new obligation will error. Create a new account or close an obligation.
     pub market_info: [KaminoMarketInfo; 5],
 
@@ -128,6 +130,13 @@ pub struct KaminoMarketInfo {
     pub obligation: Pubkey,
     pub flags: u8,
     _padding0: [u8; 7],
+    /// Each value here corresponds to an index on the obligation's `deposits` field and represents
+    /// the amount of deposit that is being collateralized for some purpose. Generally, this is
+    /// either 0 or the same as `deposited_amount`, since there is rarely (if ever) a reason to
+    /// deposit to a kwrapped obligation without using the full amount as collateral.
+    /// * Non-authoritative, the user may gain assets due to interest accumulation that are not
+    ///   accounted for until cranked
+    pub collaterizated_amounts: [u64; 8],
     _reserved0: [u8; 24],
     _reserved1: [u8; MARKET_INFO_PADDING],
 }
@@ -139,6 +148,7 @@ impl KaminoMarketInfo {
             market,
             obligation,
             flags: ACCOUNT_FREE_TO_WITHDRAW,
+            collaterizated_amounts: [0, 0, 0, 0, 0, 0, 0 ,0],
             _padding0: [0; 7],
             _reserved0: [0; 24],
             _reserved1: [0; MARKET_INFO_PADDING],

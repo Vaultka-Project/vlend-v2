@@ -44,8 +44,8 @@ pub mod kamino_wrap {
         instructions::init_obligation(ctx, tag, id)
     }
 
-    pub fn start_borrow(ctx: Context<StartBorrow>, obligaton: Pubkey) -> Result<()> {
-        instructions::start_borrow(ctx, obligaton)
+    pub fn start_borrow(ctx: Context<StartBorrow>) -> Result<()> {
+        instructions::start_borrow(ctx)
     }
 
     pub fn mrgn_withdraw(ctx: Context<MrgnWithdraw>, collateral_amount: u64) -> Result<()> {

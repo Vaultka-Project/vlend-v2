@@ -96,7 +96,8 @@ pub struct LendingAccountRegisterKwrapEvent {
     pub header: AccountEventHeader,
     pub bank: Pubkey,
     pub mint: Pubkey,
-    pub amount: u64,
+    pub obligation: Pubkey,
+    pub amount: u64
 }
 
 #[event]

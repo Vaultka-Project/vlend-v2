@@ -1,5 +1,5 @@
 /*
-Note: Due to some Anchor issue, the errors here do not get built into the IDL, and must be manually inserted. 
+Note: Due to some Anchor issue, the errors here do not get built into the IDL, and must be manually inserted.
 Open the latest good idl.json and copy the text between:
 
 "errors": [
@@ -11,7 +11,7 @@ Open the latest good idl.json and copy the text between:
   ...etc....
   ],
 
-  From that existing JSON file, changed/append items as needed (chat GPT works great for this) and then insert that into the 
+  From that existing JSON file, changed/append items as needed (chat GPT works great for this) and then insert that into the
   generated idl.json until whatever issue prevents Anchor from reading these is resolved
 */
 
@@ -123,12 +123,16 @@ pub enum MarginfiError {
     AddedStakedPoolManually,
     #[msg("Cannot borrow kamino wrapped assets")] // 6051
     CantBorrowKwrappedAssets,
-    #[msg("Cannot deposit kamino wrapped assets, use kwrap to deposit, then use register")] // 6052
+    #[msg("Cannot deposit kamino assets, use kwrap to deposit, then register_kwrap")] // 6052
     CantDepositKwrappedAssets,
-    #[msg("Kwrap account doesn't match known derived account")] // 6053
+    #[msg("Cannot withdraw kamino assets, use the kwrap-specific withdraw ix")] // 6053
+    CantWithdrawKwrappedAssets,
+    #[msg("Kwrap account doesn't match known derived account")] // 6054
     InvalidKwrapAccount,
-    #[msg("Mint does not match Reserve Mint")] // 6054
+    #[msg("Mint does not match Reserve Mint")] // 6055
     KwrapReserveMismatch,
+    #[msg("Invalid Kamino Reserve for this bank")] // 6056
+    InvalidKaminoReserve,
 }
 
 impl From<MarginfiError> for ProgramError {

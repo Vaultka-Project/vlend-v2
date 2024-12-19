@@ -5,7 +5,7 @@ use crate::{
     prelude::*,
     state::{
         marginfi_account::{BankAccountWrapper, MarginfiAccount, RiskEngine, DISABLED_FLAG},
-        marginfi_group::{Bank, BankVaultType},
+        marginfi_group::{Bank, BankVaultType, RiskTier},
     },
     utils,
 };
@@ -61,6 +61,11 @@ pub fn lending_account_withdraw<'info>(
 
     {
         let mut bank = bank_loader.load_mut()?;
+
+        check!(
+            !(bank.config.risk_tier == RiskTier::Kwrap),
+            MarginfiError::CantWithdrawKwrappedAssets
+        );
 
         let liquidity_vault_authority_bump = bank.liquidity_vault_authority_bump;
 

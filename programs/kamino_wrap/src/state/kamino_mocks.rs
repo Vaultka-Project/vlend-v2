@@ -15,8 +15,8 @@ assert_struct_align!(MinimalReserve, 8);
 ///
 /// Solana handles u128 in a special way, making them align 8, which causes a number of annoying
 /// issues when interacting with Rust, where a struct with u128 would align 16. We replace all u128
-/// in Kamino's original struct with [u8; 16], which aligns 8, to sidestep all of these issues,
-/// rather than dealing with compiler voodo. Use a helper function to extract the actualy u128
+/// in Kamino's original struct with [u8; 16], which aligns 1, to sidestep all of these issues,
+/// rather than dealing with compiler voodo. Use a helper function to extract the actual u128
 /// value. Notably, the size (8616) is not a multiple of 16, which is a huge headache.
 #[derive(Debug, PartialEq, Pod, Zeroable, Copy, Clone)]
 #[repr(C)]
@@ -62,12 +62,96 @@ impl MinimalReserve {
         bytemuck::from_bytes(v)
     }
 
-    pub fn get_borrowed_amount_sf(&self) -> u128 {
+    pub fn borrowed_amount_sf(&self) -> u128 {
         u128::from_le_bytes(self.borrowed_amount_sf)
     }
 
-    pub fn get_market_price_sf(&self) -> u128 {
+    pub fn market_price_sf(&self) -> u128 {
         u128::from_le_bytes(self.market_price_sf)
+    }
+}
+
+/// A copy of Kamino's `Obligation` that treats all the fields we are not interested in as padding
+/// and doesn't nest any data inside structs.
+///
+/// See comments for hex offset of each field, which MATCH EXACTLY the offsets in `Obligation`
+///
+/// Solana handles u128 in a special way, making them align 8, which causes a number of annoying
+/// issues when interacting with Rust, where a struct with u128 would align 16. We replace all u128
+/// in Kamino's original struct with [u8; 16], which aligns 1, to sidestep all of these issues,
+/// rather than dealing with compiler voodo. Use a helper function to extract the actual u128 value.
+#[derive(Debug, PartialEq, Pod, Zeroable, Copy, Clone)]
+#[repr(C)]
+pub struct MinimalObligation {
+    pub tag: u64,
+    pub last_update_slot: u64,            // 0x0
+    pub last_update_stale: u8,            // 0x8
+    pub last_update_price_status: u8,     // 0x9
+    pub last_update_placeholder: [u8; 6], // 0xA
+
+    pub lending_market: Pubkey, // 0x10
+    pub owner: Pubkey,          // 0x30
+
+    pub deposits: [MinimalObligationCollateral; 8], // 0x50
+    pub lowest_reserve_deposit_liquidation_ltv: u64, // 0x498
+    pub deposited_value_sf: [u8; 16],               // 0x4A0
+
+    // Borrow fields: 1000 + 16 + 16 + 16 + 16 = 1064
+    pub pad1: [u8; 1024],
+    pub pad2: [u8; 32],
+    pub pad3: [u8; 8],
+
+    pub deposits_asset_tiers: [u8; 8], // 0x8D8
+    // Borrow asset tiers
+    pub pad4: [u8; 5],
+    pub elevation_group: u8,          // 0x8E5
+    pub num_of_obsolete_reserves: u8, // 0x8E6
+    pub has_debt: u8,                 // 0x8E7
+    pub referrer: Pubkey,             // 0x8E8
+
+    pub pad5: [u8; 1024],
+}
+
+impl MinimalObligation {
+    pub fn from_bytes(v: &[u8]) -> &Self {
+        bytemuck::from_bytes(v)
+    }
+
+    pub fn deposited_value_sf(&self) -> u128 {
+        u128::from_le_bytes(self.deposited_value_sf)
+    }
+
+    pub fn find_deposit_by_reserve(
+        &self,
+        reserve: &Pubkey,
+    ) -> Option<(usize, &MinimalObligationCollateral)> {
+        self.deposits
+            .iter()
+            .enumerate()
+            .find(|&(_, deposit)| deposit.deposit_reserve.eq(reserve))
+            .map(|(index, deposit)| (index, deposit))
+    }
+
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+#[zero_copy]
+#[repr(C)]
+pub struct MinimalObligationCollateral {
+    pub deposit_reserve: Pubkey,   // 0x0
+    pub deposited_amount: u64,     // 0x20
+    pub market_value_sf: [u8; 16], // 0x28
+    pub borrowed_amount_against_this_collateral_in_elevation_group: u64, // 0x38
+    pub padding: [u64; 9],         // 0x40 (fills remainder of the collateral struct)
+}
+
+impl MinimalObligationCollateral {
+    pub fn from_bytes(v: &[u8]) -> &Self {
+        bytemuck::from_bytes(v)
+    }
+
+    pub fn market_value_sf(&self) -> u128 {
+        u128::from_le_bytes(self.market_value_sf)
     }
 }
 

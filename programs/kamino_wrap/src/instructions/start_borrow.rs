@@ -10,10 +10,18 @@
 // is likely no use case for this feature since there is no reason to wrap funds and then not use
 // them as collateral
 use crate::errors::ErrorCode;
-use crate::state::{MinimalObligation, UserAccount};
-use anchor_lang::prelude::*;
+use crate::ix_utils::validate_mrgn_cpi;
+use crate::state::{MinimalObligation, UserAccount, POSITION_ACTIVE, POSITION_INACTIVE};
+use anchor_lang::{prelude::*, solana_program::sysvar};
 
 pub fn start_borrow(ctx: Context<StartBorrow>) -> Result<()> {
+    {
+        // Validate we are inside a mrgn CPI
+        let sysvar = &ctx.accounts.instruction_sysvar_account.to_account_info();
+        // Note: future support for cpi from other programs would go here...
+        validate_mrgn_cpi(sysvar)?;
+    }
+
     let mut user_account = ctx.accounts.user_account.load_mut()?;
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
 
@@ -41,12 +49,12 @@ pub fn start_borrow(ctx: Context<StartBorrow>) -> Result<()> {
     }
     let (i, deposit) = deposit_maybe.unwrap();
     // If this position has already been collateralized, or we're trying to collateralize an empty positions, abort
-    if market_info.collaterizated_amounts[i] != 0 || deposit.deposited_amount == 0 {
+    if market_info.positions[i].state != POSITION_INACTIVE || deposit.deposited_amount == 0 {
         return err!(ErrorCode::AlreadyCollateralized);
     }
-    market_info.collaterizated_amounts[i] = deposit.deposited_amount;
-
-    // TODO utility function that can update this amount as interest accumulates and the balance increases...
+    market_info.positions[i].state = POSITION_ACTIVE;
+    market_info.positions[i].amount = deposit.deposited_amount;
+    market_info.positions[i].bank = ctx.accounts.bank.key();
 
     Ok(())
 }
@@ -66,4 +74,11 @@ pub struct StartBorrow<'info> {
 
     /// CHECK: Must exist in obligation.deposits
     pub reserve: UncheckedAccount<'info>,
+
+    /// CHECK: Completely unchecked, trusts the mrgn CPI caller explicitly
+    pub bank: UncheckedAccount<'info>,
+
+    /// CHECK: checked against hardcoded sysvar program
+    #[account(address = sysvar::instructions::ID)]
+    pub instruction_sysvar_account: UncheckedAccount<'info>,
 }

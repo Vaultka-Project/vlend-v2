@@ -18,4 +18,6 @@ pub enum ErrorCode {
     DepositDoesNotExist, // 6006
     #[msg("This position was already collateralized.")]
     AlreadyCollateralized, // 6007
+    #[msg("The Obligation is stale. Try refreshing the obligation in the same tx.")]
+    ObligationStale, // 6008
 }

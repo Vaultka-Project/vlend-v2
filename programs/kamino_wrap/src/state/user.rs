@@ -4,17 +4,20 @@ use bytemuck::{Pod, Zeroable};
 use crate::errors::ErrorCode;
 use crate::{assert_struct_align, assert_struct_size};
 
-assert_struct_size!(UserAccount, 1784);
+// Note: this struct is VERY close to redline, a few more bytes will start blowing out the stack in
+// various instructions. This is mostly because Kamino already uses a ton of stack and the CPI
+// instructions are close to redline from just executing the CPI
+assert_struct_size!(UserAccount, 2168);
 assert_struct_align!(UserAccount, 8);
 
 pub const ACCOUNT_FREE_TO_WITHDRAW: u8 = 0b00000001;
 
-pub const USER_ACCOUNT_PADDING: usize = 512;
+pub const USER_ACCOUNT_PADDING: usize = 128;
 
 /// The central account management structure for a user's Kamino positions to be used as collateral
 /// on mrgn. Typically, a mrgn user will have one kWrap UserAccount per Mrgn Account, and will
 /// deposit any Kamino assets they want to use as collateral with this account.
-/// * Rent ~= 0.013 SOL
+/// * Rent ~= 0.016 SOL
 #[account(zero_copy)]
 #[repr(C)]
 pub struct UserAccount {
@@ -34,11 +37,10 @@ pub struct UserAccount {
 
     /// At-a-glance information about markets this account has positions in.
     /// * Not sorted in any particular order
-    /// * Kamino has 5 "primary" markets as of November 2024 (Jito, JLP, Main, Altcoin, Ethena). It
-    ///   is very unlikely that the vast majority of users will use all 5 slots. We assume 90% of
-    ///   users will use 2 or fewer Kamino markets, and 99.99% use less than 5
+    /// * Kamino has 5 "primary" markets as of November 2024 (Jito, JLP, Main, Altcoin, Ethena). We
+    ///   assume 90% of users will use 2 or fewer Kamino markets, and 99.99% use less than 3.
     /// * If full, adding a new obligation will error. Create a new account or close an obligation.
-    pub market_info: [KaminoMarketInfo; 5],
+    pub market_info: [KaminoMarketInfo; 3],
 
     /// Reserved for future use
     pub placeholder: u64,
@@ -120,6 +122,45 @@ impl UserAccount {
 }
 
 pub const MARKET_INFO_PADDING: usize = 32;
+pub const POSITION_INACTIVE: u8 = 0;
+pub const POSITION_ACTIVE: u8 = 1;
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Zeroable, Pod)]
+#[repr(C)]
+pub struct CollateralizedPosition {
+    /// Generally, this is either 0 or the same as `deposited_amount`, since there is rarely (if
+    /// ever) a reason to deposit to a kwrapped obligation without using the full amount as
+    /// collateral.
+    /// * Non-authoritative unless synced (see `synced_slot`), the user may gain assets due to
+    ///   interest accumulation that are not accounted for until cranked
+    /// * In token, in native decimal
+    pub amount: u64,
+    /// The amount of interest or deposits that have accumulated since last sync. These funds always
+    /// count towards the user's balance just like `collat_amounts` but are not synced with the mrgn
+    /// bank's book-keeping until the next time the user interacts with that bank.
+    /// * Use `accrue_interest` to update and sync interest
+    /// * In token, in native decimal
+    pub unsynced: u64,
+    /// The mrgn bank that collateralized this position
+    pub bank: Pubkey,
+    /// 0 = POSITION_INACTIVE
+    /// 1 = POSITION_ACTIVE
+    /// Others - reserved for future use
+    pub state: u8,
+    _reserved0: [u8; 7],
+}
+
+impl CollateralizedPosition {
+    pub fn new(amount: u64, bank: Pubkey) -> Self {
+        CollateralizedPosition {
+            amount,
+            unsynced: 0,
+            bank,
+            state: POSITION_INACTIVE,
+            _reserved0: [0; 7],
+        }
+    }
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Zeroable, Pod)]
 #[repr(C)]
@@ -131,13 +172,13 @@ pub struct KaminoMarketInfo {
     pub flags: u8,
     _padding0: [u8; 7],
     /// Each value here corresponds to an index on the obligation's `deposits` field and represents
-    /// the amount of deposit that is being collateralized for some purpose. Generally, this is
-    /// either 0 or the same as `deposited_amount`, since there is rarely (if ever) a reason to
-    /// deposit to a kwrapped obligation without using the full amount as collateral.
-    /// * Non-authoritative, the user may gain assets due to interest accumulation that are not
-    ///   accounted for until cranked
-    pub collaterizated_amounts: [u64; 8],
-    _reserved0: [u8; 24],
+    /// the amount of deposit that is being collateralized for some purpose.
+    pub positions: [CollateralizedPosition; 8],
+    /// If this equals the current slot (`Clock::get().unwrap().slot`), then for any given position,
+    /// `amount` + `unsynced` includes all interest accrued and can be considered authoritative.
+    /// * Use `accrue_interest` to sync interest
+    pub synced_slot: u64,
+    _reserved0: [u8; 16],
     _reserved1: [u8; MARKET_INFO_PADDING],
 }
 
@@ -148,9 +189,10 @@ impl KaminoMarketInfo {
             market,
             obligation,
             flags: ACCOUNT_FREE_TO_WITHDRAW,
-            collaterizated_amounts: [0, 0, 0, 0, 0, 0, 0 ,0],
+            positions: [CollateralizedPosition::zeroed(); 8],
             _padding0: [0; 7],
-            _reserved0: [0; 24],
+            synced_slot: 0,
+            _reserved0: [0; 16],
             _reserved1: [0; MARKET_INFO_PADDING],
         }
     }
@@ -166,9 +208,16 @@ impl KaminoMarketInfo {
         self.flags &= !ACCOUNT_FREE_TO_WITHDRAW;
     }
 
-    /// Sets the `ACCOUNT_FREE_TO_WITHDRAW`, leaving other flags as-is
+    /// Sets the `ACCOUNT_FREE_TO_WITHDRAW`, if permitted, leaving other flags as-is.
+    /// If not permitted (any balance is collateralized), does nothing.
     pub fn set_free_to_withdraw_flag(&mut self) {
-        self.flags &= ACCOUNT_FREE_TO_WITHDRAW;
+        if self
+            .positions
+            .iter()
+            .all(|&position| position.amount == 0 && position.unsynced == 0)
+        {
+            self.flags |= ACCOUNT_FREE_TO_WITHDRAW;
+        }
     }
 }
 

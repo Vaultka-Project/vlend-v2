@@ -9,7 +9,7 @@ use crate::{
     },
     utils::validate_asset_tags,
 };
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, solana_program::sysvar};
 use fixed::types::I80F48;
 use kwrap::{constants::KAMINO_ID, state::MinimalObligation};
 
@@ -127,6 +127,9 @@ pub struct LendingAccountRegisterKwrap<'info> {
     /// CHECK: Validated against known hard-coded key
     #[account(address = kwrap::ID)]
     pub kwrap_program: UncheckedAccount<'info>,
+    /// CHECK: checked against hardcoded sysvar program
+    #[account(address = sysvar::instructions::ID)]
+    pub instruction_sysvar_account: UncheckedAccount<'info>,
 }
 
 impl<'info> LendingAccountRegisterKwrap<'info> {
@@ -136,6 +139,8 @@ impl<'info> LendingAccountRegisterKwrap<'info> {
             user_account: self.user_kwrap_account.to_account_info(),
             obligation: self.obligation.to_account_info(),
             reserve: self.reserve.to_account_info(),
+            bank: self.bank.to_account_info(),
+            instruction_sysvar_account: self.instruction_sysvar_account.to_account_info()
         };
         let program = self.kwrap_program.to_account_info();
         let cpi_ctx = CpiContext::new(program, cpi_accounts);

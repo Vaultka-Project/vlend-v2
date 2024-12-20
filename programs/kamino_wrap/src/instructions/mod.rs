@@ -1,3 +1,4 @@
+pub mod accrue_interest;
 pub mod deposit_common;
 pub mod existing_deposit;
 pub mod fresh_deposit;
@@ -7,6 +8,7 @@ pub mod init_user;
 pub mod mrgn_withdraw;
 pub mod start_borrow;
 
+pub use accrue_interest::*;
 pub use deposit_common::*;
 pub use existing_deposit::*;
 pub use fresh_deposit::*;

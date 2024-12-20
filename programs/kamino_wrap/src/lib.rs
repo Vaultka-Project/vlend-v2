@@ -24,6 +24,10 @@ cfg_if::cfg_if! {
 pub mod kamino_wrap {
     use super::*;
 
+    pub fn accrue_interest(ctx: Context<AccrueInterest>) -> Result<()> {
+        instructions::accrue_interest(ctx)
+    }
+
     pub fn fresh_deposit(ctx: Context<FreshDeposit>, amount: u64) -> Result<()> {
         instructions::fresh_deposit(ctx, amount)
     }

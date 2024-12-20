@@ -1,7 +1,7 @@
 // Wraps an simple deposit to Kamino of new assets into the program-owner user account. Use this
 // instruction when depositing new assets into Kamino
 use crate::errors::ErrorCode;
-use crate::state::MinimalObligation;
+use crate::state::{MinimalObligation, POSITION_ACTIVE};
 use crate::{constants::KAMINO_ID, state::UserAccount, user_account_signer_seeds};
 use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::{token::Token, token_interface::TokenInterface};
@@ -13,7 +13,7 @@ pub fn fresh_deposit(ctx: Context<FreshDeposit>, liquidity_amount: u64) -> Resul
     if liquidity_amount == 0 {
         panic!("tried to depost 0, don't waste the compute");
     }
-    
+
     {
         // Note: clone() is required here to avoid re-borrowing as mut of `AccountMeta::new`
         let user_account = ctx.accounts.user_account.load()?.clone();
@@ -50,7 +50,7 @@ pub fn fresh_deposit(ctx: Context<FreshDeposit>, liquidity_amount: u64) -> Resul
     let mut user_account = ctx.accounts.user_account.load_mut()?;
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
 
-    // Update the deposit amount if this is already a registered position
+    // Record the deposit amount if this is already a collateralized position
     let market_info = user_account.find_info_by_obligation_mut(&ctx.accounts.obligation.key());
     if market_info.is_none() {
         return err!(ErrorCode::MarketInfoDoesNotExist);
@@ -69,8 +69,14 @@ pub fn fresh_deposit(ctx: Context<FreshDeposit>, liquidity_amount: u64) -> Resul
     }
     let (i, deposit) = deposit_maybe.unwrap();
     // If this position has is active (has non-zero collateralized), update it. Else, do nothing
-    if market_info.collaterizated_amounts[i] != 0 {
-        market_info.collaterizated_amounts[i] = deposit.deposited_amount;
+    if market_info.positions[i].state == POSITION_ACTIVE {
+        // Sanity check: this should always be true or we made a mistake recording a withdraw/liquidation
+        if deposit.deposited_amount >= market_info.positions[i].amount {
+            market_info.positions[i].unsynced =
+                deposit.deposited_amount - market_info.positions[i].amount;
+        } else {
+            panic!("unexpected critical accounting error");
+        }
     } else {
         // do nothing
     }

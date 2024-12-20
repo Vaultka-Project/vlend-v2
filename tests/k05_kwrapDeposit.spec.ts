@@ -171,9 +171,9 @@ describe("Deposit from Kamino account", () => {
       kwrapAccount
     );
     for (let i = 0; i < kwrapAcc.marketInfo.length; i++) {
-      let collatAmounts = kwrapAcc.marketInfo[i].collaterizatedAmounts;
-      for (let k = 0; k < collatAmounts.length; k++) {
-        assertBNEqual(collatAmounts[k], 0);
+      let collatPositions = kwrapAcc.marketInfo[i].positions;
+      for (let k = 0; k < collatPositions.length; k++) {
+        assertBNEqual(collatPositions[k].amount, 0);
       }
     }
   });

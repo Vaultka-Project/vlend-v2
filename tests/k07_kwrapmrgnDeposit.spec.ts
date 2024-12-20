@@ -89,16 +89,22 @@ describe("Deposit funds into kwrapped banks", () => {
       ).data
     );
     assertBNEqual(
-      kwrapAcc.marketInfo[0].collaterizatedAmounts[0],
+      kwrapAcc.marketInfo[0].positions[0].amount,
       obAcc.deposits[0].depositedAmount
     );
+    // Note: we deposited 10, twice, in k05
     assertBNEqual(
-      kwrapAcc.marketInfo[0].collaterizatedAmounts[0],
+      kwrapAcc.marketInfo[0].positions[0].amount,
       20 * 10 ** ecosystem.usdcDecimals
     );
+    assertKeysEqual(kwrapAcc.marketInfo[0].positions[0].bank, usdcBank);
+    assert.equal(kwrapAcc.marketInfo[0].positions[0].state, 1); //active
   });
 
   it("(user 0) Top up more usdc into kwrapped usdc bank - happy path", async () => {
     // TODO
+    // TODO sync with bank and verify after
   });
+
+  // TODO accrue interest?
 });

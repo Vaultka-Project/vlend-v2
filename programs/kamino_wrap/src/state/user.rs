@@ -4,9 +4,14 @@ use bytemuck::{Pod, Zeroable};
 use crate::errors::ErrorCode;
 use crate::{assert_struct_align, assert_struct_size};
 
-// Note: this struct is VERY close to redline, a few more bytes will start blowing out the stack in
-// various instructions. This is mostly because Kamino already uses a ton of stack and the CPI
-// instructions are close to redline from just executing the CPI
+// Note: this struct is VERY close to redline, a few more bytes will start SILENTLY blowing out the
+// stack in various instructions. This is mostly because Kamino already uses a ton of stack and the
+// CPI instructions are close to redline from just executing the CPI. If the program compiles
+// without error but you see this in testing:
+/*
+Program abcde failed: Access violation in unknown section at address 0xac79ebce46e1cbd9 of size 8
+*/
+// You blew out the stack, try to cut padding to reduce the size of this account
 assert_struct_size!(UserAccount, 2168);
 assert_struct_align!(UserAccount, 8);
 
@@ -33,17 +38,8 @@ pub struct UserAccount {
     pub bound_account: Pubkey,
 
     // Reserved for future keys
-    _reserved0: [u8; 128],
+    _reserved0: [u8; 64],
 
-    /// At-a-glance information about markets this account has positions in.
-    /// * Not sorted in any particular order
-    /// * Kamino has 5 "primary" markets as of November 2024 (Jito, JLP, Main, Altcoin, Ethena). We
-    ///   assume 90% of users will use 2 or fewer Kamino markets, and 99.99% use less than 3.
-    /// * If full, adding a new obligation will error. Create a new account or close an obligation.
-    pub market_info: [KaminoMarketInfo; 3],
-
-    /// Reserved for future use
-    pub placeholder: u64,
     /// Timestamp of last on-chain action on this account.
     pub last_activity: i64,
     /// Bump to generate this pda
@@ -54,6 +50,13 @@ pub struct UserAccount {
     pub flags: u8,
     // Pad to nearest 8-byte alignment
     pub padding0: [u8; 6],
+
+    /// At-a-glance information about markets this account has positions in.
+    /// * Not sorted in any particular order
+    /// * Kamino has 5 "primary" markets as of December 2024 (Jito, JLP, Main, Altcoin, Ethena). We
+    ///   assume 90% of users will use 2 or fewer Kamino markets, and 99.99% use less than 3.
+    /// * If full, adding a new obligation will error. Create a new account or close an obligation.
+    pub market_info: [KaminoMarketInfo; 3],
 
     // Reserved for future use
     _reserved1: [u8; USER_ACCOUNT_PADDING],
@@ -119,9 +122,35 @@ impl UserAccount {
             *market_info = KaminoMarketInfo::zeroed();
         }
     }
+
+    /// Across all obligations stored on this acount, return the net amount that is unsynced accross
+    /// all collateralized positions. Returns 0 if there aren't any positions with the target bank.
+    pub fn sum_unsynced_for_bank(&self, target_bank: &Pubkey) -> u64 {
+        self.market_info
+            .iter()
+            .flat_map(|market_info| market_info.positions.iter())
+            .filter(|position| position.bank.eq(target_bank))
+            .map(|position| position.unsynced)
+            .sum()
+    }
+
+    /// Across all obligations stored on this acount with the given bank, add the unsynced amount to
+    /// the position's amount and reset usynced amount to 0. If there are no positions with the
+    /// target bank, does nothing.
+    pub fn sync_positions_for_bank(&mut self, target_bank: &Pubkey, slot: u64) {
+        for market_info in self.market_info.iter_mut() {
+            for position in market_info.positions.iter_mut() {
+                if position.bank.eq(target_bank) {
+                    position.amount += position.unsynced;
+                    position.unsynced = 0;
+                    position.synced_slot = slot;
+                }
+            }
+        }
+    }
 }
 
-pub const MARKET_INFO_PADDING: usize = 32;
+pub const MARKET_INFO_PADDING: usize = 16;
 pub const POSITION_INACTIVE: u8 = 0;
 pub const POSITION_ACTIVE: u8 = 1;
 
@@ -136,18 +165,24 @@ pub struct CollateralizedPosition {
     /// * In token, in native decimal
     pub amount: u64,
     /// The amount of interest or deposits that have accumulated since last sync. These funds always
-    /// count towards the user's balance just like `collat_amounts` but are not synced with the mrgn
-    /// bank's book-keeping until the next time the user interacts with that bank.
-    /// * Use `accrue_interest` to update and sync interest
+    /// count towards the user's balance just like `amount` but are not synced with the mrgn
+    /// bank's book-keeping until the next time the user manually syncs with that bank.
+    /// * Use `accrue_interest` to update unsynced interest
     /// * In token, in native decimal
     pub unsynced: u64,
     /// The mrgn bank that collateralized this position
     pub bank: Pubkey,
-    /// 0 = POSITION_INACTIVE
-    /// 1 = POSITION_ACTIVE
-    /// Others - reserved for future use
+    /// * 0 = POSITION_INACTIVE
+    /// * 1 = POSITION_ACTIVE
+    /// * Others - reserved for future use
     pub state: u8,
     _reserved0: [u8; 7],
+    // TODO test edge cases where refresh_obligation lands after accrue_interest (may need tx introspection?)
+    /// If this equals the current slot (`Clock::get().unwrap().slot`) and the corresponding
+    /// obligation was also last updated in the same slot, then this position includes all interest
+    /// accrued and can be considered authoritative.
+    /// * Use `accrue_interest` to sync interest
+    pub synced_slot: u64,
 }
 
 impl CollateralizedPosition {
@@ -158,6 +193,7 @@ impl CollateralizedPosition {
             bank,
             state: POSITION_INACTIVE,
             _reserved0: [0; 7],
+            synced_slot: 0,
         }
     }
 }
@@ -174,12 +210,7 @@ pub struct KaminoMarketInfo {
     /// Each value here corresponds to an index on the obligation's `deposits` field and represents
     /// the amount of deposit that is being collateralized for some purpose.
     pub positions: [CollateralizedPosition; 8],
-    /// If this equals the current slot (`Clock::get().unwrap().slot`), then for any given position,
-    /// `amount` + `unsynced` includes all interest accrued and can be considered authoritative.
-    /// * Use `accrue_interest` to sync interest
-    pub synced_slot: u64,
-    _reserved0: [u8; 16],
-    _reserved1: [u8; MARKET_INFO_PADDING],
+    _reserved0: [u8; MARKET_INFO_PADDING],
 }
 
 impl KaminoMarketInfo {
@@ -191,9 +222,7 @@ impl KaminoMarketInfo {
             flags: ACCOUNT_FREE_TO_WITHDRAW,
             positions: [CollateralizedPosition::zeroed(); 8],
             _padding0: [0; 7],
-            synced_slot: 0,
-            _reserved0: [0; 16],
-            _reserved1: [0; MARKET_INFO_PADDING],
+            _reserved0: [0; MARKET_INFO_PADDING],
         }
     }
 

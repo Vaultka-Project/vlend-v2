@@ -18,7 +18,6 @@ pub fn start_borrow(ctx: Context<StartBorrow>) -> Result<()> {
     {
         // Validate we are inside a mrgn CPI
         let sysvar = &ctx.accounts.instruction_sysvar_account.to_account_info();
-        // Note: future support for cpi from other programs would go here...
         validate_mrgn_cpi(sysvar)?;
     }
 

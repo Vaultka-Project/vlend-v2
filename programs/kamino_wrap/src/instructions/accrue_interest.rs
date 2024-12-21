@@ -49,8 +49,6 @@ pub fn accrue_interest(ctx: Context<AccrueInterest>) -> Result<()> {
         }
     }
 
-    market_info.synced_slot = slot;
-
     Ok(())
 }
 

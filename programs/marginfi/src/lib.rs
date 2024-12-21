@@ -134,6 +134,13 @@ pub mod marginfi {
         marginfi_account::lending_account_register_kwrap(ctx)
     }
 
+    /// Sync a user's balance in some kwrapped Bank
+    pub fn sync_kwrap<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SyncKwrap<'info>>,
+    ) -> MarginfiResult {
+        marginfi_account::sync_kwrap(ctx)
+    }
+
     pub fn lending_account_repay<'info>(
         ctx: Context<'_, '_, 'info, 'info, LendingAccountRepay<'info>>,
         amount: u64,

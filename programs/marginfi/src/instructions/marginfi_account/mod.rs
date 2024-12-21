@@ -6,8 +6,9 @@ mod emissions;
 mod flashloan;
 mod initialize;
 mod liquidate;
-pub mod register_kwrap;
+mod register_kwrap;
 mod repay;
+mod sync_kwrap;
 mod transfer_authority;
 mod withdraw;
 
@@ -21,5 +22,6 @@ pub use initialize::*;
 pub use liquidate::*;
 pub use register_kwrap::*;
 pub use repay::*;
+pub use sync_kwrap::*;
 pub use transfer_authority::*;
 pub use withdraw::*;

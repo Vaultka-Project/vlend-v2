@@ -52,6 +52,10 @@ pub mod kamino_wrap {
         instructions::start_borrow(ctx)
     }
 
+    pub fn sync_borrow(ctx: Context<SyncBorrow>) -> Result<()> {
+        instructions::sync_borrow(ctx)
+    }
+
     pub fn mrgn_withdraw(ctx: Context<MrgnWithdraw>, collateral_amount: u64) -> Result<()> {
         instructions::mrgn_withdraw(ctx, collateral_amount)
     }

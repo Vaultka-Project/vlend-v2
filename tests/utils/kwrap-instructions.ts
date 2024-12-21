@@ -290,6 +290,28 @@ export const registerKwrapDeposit = (
       obligation: args.obligation,
       // reserve: // implied from bank
       // kwrapProgram: // hard coded
+      // sysvar // hard coded
+    })
+    .instruction();
+
+  return ix;
+};
+
+export type SyncKwrapArgs = {
+  marginfiAccount: PublicKey;
+  userKwrapAccount: PublicKey;
+  bank: PublicKey;
+};
+
+export const syncKwrap = (program: Program<Marginfi>, args: SyncKwrapArgs) => {
+  const ix = program.methods
+    .syncKwrap()
+    .accounts({
+      marginfiAccount: args.marginfiAccount,
+      userAccount: args.userKwrapAccount,
+      bank: args.bank,
+      // kwrapProgram: // hard coded
+      // sysvar // hard coded
     })
     .instruction();
 

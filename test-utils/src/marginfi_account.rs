@@ -228,9 +228,10 @@ impl MarginfiAccountFixture {
         let marginfi_account = self.load().await;
 
         let mut accounts = marginfi::accounts::LendingAccountBorrow {
-            marginfi_group: marginfi_account.group,
+            group: marginfi_account.group,
             marginfi_account: self.key,
-            signer: self.ctx.borrow().payer.pubkey(),
+            user_account: None,
+            authority: self.ctx.borrow().payer.pubkey(),
             bank: bank.key,
             destination_token_account: destination_account,
             bank_liquidity_vault: bank.get_vault(BankVaultType::Liquidity).0,

@@ -15,6 +15,10 @@ Program abcde failed: Access violation in unknown section at address 0xac79ebce4
 assert_struct_size!(UserAccount, 2168);
 assert_struct_align!(UserAccount, 8);
 
+/// Balances are considered fresh for this many slots after acruing interest before they have to
+/// accrue again. (Note: a slot is ~400ms)
+pub const ACCRUE_SLOT_TOLERANCE: u8 = 15;
+
 pub const ACCOUNT_FREE_TO_WITHDRAW: u8 = 0b00000001;
 
 pub const USER_ACCOUNT_PADDING: usize = 128;
@@ -35,7 +39,7 @@ pub struct UserAccount {
     /// Kamino LUT associated with the metadata account
     pub lut: Pubkey,
     /// Typically, the mrgn account associated with this kwrap user account.
-    pub bound_account: Pubkey,
+    pub marginfi_account: Pubkey,
 
     // Reserved for future keys
     _reserved0: [u8; 64],
@@ -150,7 +154,7 @@ impl UserAccount {
     }
 }
 
-pub const MARKET_INFO_PADDING: usize = 16;
+pub const MARKET_INFO_PADDING: usize = 8;
 pub const POSITION_INACTIVE: u8 = 0;
 pub const POSITION_ACTIVE: u8 = 1;
 
@@ -210,6 +214,10 @@ pub struct KaminoMarketInfo {
     /// Each value here corresponds to an index on the obligation's `deposits` field and represents
     /// the amount of deposit that is being collateralized for some purpose.
     pub positions: [CollateralizedPosition; 8],
+    /// Slot in which the obligation was last kamino `refresh_obligation` +  kwrap
+    /// `accrue_interest`. The balances in `positions` may not be up-to-date if this is not
+    /// sufficiently recent.
+    pub refreshed_slot: u64,
     _reserved0: [u8; MARKET_INFO_PADDING],
 }
 
@@ -220,8 +228,9 @@ impl KaminoMarketInfo {
             market,
             obligation,
             flags: ACCOUNT_FREE_TO_WITHDRAW,
-            positions: [CollateralizedPosition::zeroed(); 8],
             _padding0: [0; 7],
+            positions: [CollateralizedPosition::zeroed(); 8],
+            refreshed_slot: 0,
             _reserved0: [0; MARKET_INFO_PADDING],
         }
     }

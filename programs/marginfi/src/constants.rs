@@ -172,3 +172,6 @@ pub const ASSET_TAG_SOL: u8 = 1;
 /// Staked SOL assets. Accounts with a STAKED position can only deposit other STAKED assets or SOL
 /// (`ASSET_TAG_SOL`) and can only borrow SOL (`ASSET_TAG_SOL`)
 pub const ASSET_TAG_STAKED: u8 = 2;
+
+pub const BANK_TYPE_NOT_KWRAP: u8 = 0;
+pub const BANK_TYPE_KWRAP: u8 = 1;

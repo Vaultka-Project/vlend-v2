@@ -13,6 +13,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 use fixed::types::I80F48;
+use kwrap::state::UserAccount;
 use solana_program::{clock::Clock, sysvar::Sysvar};
 
 /// 1. Accrue interest
@@ -33,7 +34,7 @@ pub fn lending_account_borrow<'info>(
         token_program,
         bank_liquidity_vault_authority,
         bank: bank_loader,
-        marginfi_group: marginfi_group_loader,
+        group: marginfi_group_loader,
         ..
     } = ctx.accounts;
     let clock = Clock::get()?;
@@ -46,6 +47,13 @@ pub fn lending_account_borrow<'info>(
     let mut marginfi_account = marginfi_account_loader.load_mut()?;
     let group = &marginfi_group_loader.load()?;
     let program_fee_rate: I80F48 = group.fee_state_cache.program_fee_rate.into();
+
+    let kwrap_required =
+        marginfi_account.has_kwrap_positions() && ctx.accounts.user_account.is_none();
+    check!(kwrap_required, MarginfiError::KwrapUserAccountMissing);
+
+    let user_acc = ctx.accounts.user_account.as_ref().unwrap();
+    let user_acc = user_acc.load()?;
 
     check!(
         !marginfi_account.get_flag(DISABLED_FLAG),
@@ -127,7 +135,7 @@ pub fn lending_account_borrow<'info>(
 
         emit!(LendingAccountBorrowEvent {
             header: AccountEventHeader {
-                signer: Some(ctx.accounts.signer.key()),
+                signer: Some(ctx.accounts.authority.key()),
                 marginfi_account: marginfi_account_loader.key(),
                 marginfi_account_authority: marginfi_account.authority,
                 marginfi_group: marginfi_account.group,
@@ -178,22 +186,26 @@ pub fn lending_account_borrow<'info>(
 
 #[derive(Accounts)]
 pub struct LendingAccountBorrow<'info> {
-    pub marginfi_group: AccountLoader<'info, MarginfiGroup>,
+    pub group: AccountLoader<'info, MarginfiGroup>,
 
     #[account(
         mut,
-        constraint = marginfi_account.load() ?.group == marginfi_group.key(),
+        has_one = marginfi_account
+    )]
+    pub user_account: Option<AccountLoader<'info, UserAccount>>,
+
+    #[account(
+        mut,
+        has_one = group,
+        has_one = authority
     )]
     pub marginfi_account: AccountLoader<'info, MarginfiAccount>,
 
-    #[account(
-        address = marginfi_account.load() ?.authority,
-    )]
-    pub signer: Signer<'info>,
+    pub authority: Signer<'info>,
 
     #[account(
         mut,
-        constraint = bank.load() ?.group == marginfi_group.key(),
+        has_one = group,
     )]
     pub bank: AccountLoader<'info, Bank>,
 

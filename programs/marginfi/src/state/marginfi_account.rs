@@ -5,9 +5,10 @@ use super::{
 use crate::{
     assert_struct_align, assert_struct_size, check,
     constants::{
-        ASSET_TAG_DEFAULT, ASSET_TAG_STAKED, BANKRUPT_THRESHOLD, EMISSIONS_FLAG_BORROW_ACTIVE,
-        EMISSIONS_FLAG_LENDING_ACTIVE, EMPTY_BALANCE_THRESHOLD, EXP_10_I80F48,
-        MIN_EMISSIONS_START_TIME, SECONDS_PER_YEAR, ZERO_AMOUNT_THRESHOLD,
+        ASSET_TAG_DEFAULT, ASSET_TAG_STAKED, BANKRUPT_THRESHOLD, BANK_TYPE_KWRAP,
+        BANK_TYPE_NOT_KWRAP, EMISSIONS_FLAG_BORROW_ACTIVE, EMISSIONS_FLAG_LENDING_ACTIVE,
+        EMPTY_BALANCE_THRESHOLD, EXP_10_I80F48, MIN_EMISSIONS_START_TIME, SECONDS_PER_YEAR,
+        ZERO_AMOUNT_THRESHOLD,
     },
     debug, math_error,
     prelude::{MarginfiError, MarginfiResult},
@@ -114,6 +115,14 @@ impl MarginfiAccount {
             .all(|balance| balance.get_side().is_none());
 
         !is_disabled && only_has_empty_balances
+    }
+
+    /// True if any balance on this account is a kwrapped Kamino position, false otherwise.
+    pub fn has_kwrap_positions(&self) -> bool {
+        self.lending_account
+            .balances
+            .iter()
+            .any(|balance| balance.bank_kwrap_state != 0)
     }
 }
 
@@ -790,7 +799,11 @@ pub struct Balance {
     /// Inherited from the bank when the position is first created and CANNOT BE CHANGED after that.
     /// Note that all balances created before the addition of this feature use `ASSET_TAG_DEFAULT`
     pub bank_asset_tag: u8,
-    pub _pad0: [u8; 6],
+    /// Positions with a non-zero value here are kwrapped Kamino positions. Their asset shares are
+    /// non-authoritative unless the corresponding kwrap user account has been synced.
+    /// * 0 or 1, other values reserved for future use
+    pub bank_kwrap_state: u8,
+    pub _pad0: [u8; 5],
     pub asset_shares: WrappedI80F48,
     pub liability_shares: WrappedI80F48,
     pub emissions_outstanding: WrappedI80F48,
@@ -863,7 +876,8 @@ impl Balance {
             active: false,
             bank_pk: Pubkey::default(),
             bank_asset_tag: ASSET_TAG_DEFAULT,
-            _pad0: [0; 6],
+            bank_kwrap_state: BANK_TYPE_NOT_KWRAP,
+            _pad0: [0; 5],
             asset_shares: WrappedI80F48::from(I80F48::ZERO),
             liability_shares: WrappedI80F48::from(I80F48::ZERO),
             emissions_outstanding: WrappedI80F48::from(I80F48::ZERO),
@@ -916,6 +930,11 @@ impl<'a> BankAccountWrapper<'a> {
                 Ok(Self { balance, bank })
             }
             None => {
+                let kwrap_state = if bank.reserve.eq(&Pubkey::default()) {
+                    BANK_TYPE_NOT_KWRAP
+                } else {
+                    BANK_TYPE_KWRAP
+                };
                 let empty_index = lending_account
                     .get_first_empty_balance()
                     .ok_or_else(|| error!(MarginfiError::LendingAccountBalanceSlotsFull))?;
@@ -924,7 +943,8 @@ impl<'a> BankAccountWrapper<'a> {
                     active: true,
                     bank_pk: *bank_pk,
                     bank_asset_tag: bank.config.asset_tag,
-                    _pad0: [0; 6],
+                    bank_kwrap_state: kwrap_state,
+                    _pad0: [0; 5],
                     asset_shares: I80F48::ZERO.into(),
                     liability_shares: I80F48::ZERO.into(),
                     emissions_outstanding: I80F48::ZERO.into(),
@@ -1460,7 +1480,8 @@ mod test {
                     active: true,
                     bank_pk: bank_pk.into(),
                     bank_asset_tag: ASSET_TAG_DEFAULT,
-                    _pad0: [0; 6],
+                    bank_kwrap_state: BANK_TYPE_NOT_KWRAP,
+                    _pad0: [0; 5],
                     asset_shares: WrappedI80F48::default(),
                     liability_shares: WrappedI80F48::default(),
                     emissions_outstanding: WrappedI80F48::default(),

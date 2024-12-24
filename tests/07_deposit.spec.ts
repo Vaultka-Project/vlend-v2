@@ -27,6 +27,7 @@ import { depositIx } from "./utils/user-instructions";
 import { USER_ACCOUNT } from "./utils/mocks";
 import { createMintToInstruction } from "@solana/spl-token";
 import { deriveLiquidityVault } from "./utils/pdas";
+import { ASSET_TAG_DEFAULT, BANK_TYPE_NOT_KWRAP } from "./utils/types";
 
 describe("Deposit funds", () => {
   const program = workspace.Marginfi as Program<Marginfi>;
@@ -147,6 +148,8 @@ describe("Deposit funds", () => {
     assertI80F48Approx(balances[0].assetShares, depositAmountUsdc_native);
     assertI80F48Equal(balances[0].liabilityShares, 0);
     assertI80F48Equal(balances[0].emissionsOutstanding, 0);
+    assert.equal(balances[0].bankAssetTag, ASSET_TAG_DEFAULT);
+    assert.equal(balances[0].bankKwrapState, BANK_TYPE_NOT_KWRAP);
 
     let now = Math.floor(Date.now() / 1000);
     assertBNApproximately(balances[0].lastUpdate, now, 2);

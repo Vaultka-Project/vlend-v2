@@ -30,11 +30,13 @@ use kwrap::{
 };
 
 pub fn sync_kwrap(ctx: Context<SyncKwrap>) -> Result<()> {
+    // TODO by tx introspection, assert that no refresh_obligation ixes come after this in the TX
     {
         let mut bank = ctx.accounts.bank.load_mut()?;
         let user_account = ctx.accounts.user_account.load()?;
         let mut marginfi_account = ctx.accounts.marginfi_account.load_mut()?;
 
+        // Sanity check (already validated by constraint)
         validate_user_kwrap_account(
             &marginfi_account.authority,
             &ctx.accounts.marginfi_account.key(),
@@ -69,7 +71,10 @@ pub struct SyncKwrap<'info> {
     #[account(mut)]
     pub marginfi_account: AccountLoader<'info, MarginfiAccount>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        has_one = marginfi_account
+    )]
     pub user_account: AccountLoader<'info, UserAccount>,
 
     /// CHECK: this ix does nothing if a bad bank is passed

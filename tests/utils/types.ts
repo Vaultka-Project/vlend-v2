@@ -30,6 +30,8 @@ export const ASSET_TAG_DEFAULT = 0;
 export const ASSET_TAG_SOL = 1;
 export const ASSET_TAG_STAKED = 2;
 
+export const BANK_TYPE_NOT_KWRAP = 0;
+export const BANK_TYPE_KWRAP = 1;
 /*
   Kwrap flags
 */

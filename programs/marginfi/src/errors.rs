@@ -121,6 +121,8 @@ pub enum MarginfiError {
     InvalidFeeAta,
     #[msg("Use add pool permissionless instead")] // 6050
     AddedStakedPoolManually,
+
+    // TODO renumber when merged with main
     #[msg("Cannot borrow kamino wrapped assets")] // 6051
     CantBorrowKwrappedAssets,
     #[msg("Cannot deposit kamino assets, use kwrap to deposit, then register_kwrap")] // 6052
@@ -133,6 +135,8 @@ pub enum MarginfiError {
     KwrapReserveMismatch,
     #[msg("Invalid Kamino Reserve for this bank")] // 6056
     InvalidKaminoReserve,
+    #[msg("User has Kwrapped positions: must pass a synced Kwrap User Account")] // 6057
+    KwrapUserAccountMissing,
 }
 
 impl From<MarginfiError> for ProgramError {

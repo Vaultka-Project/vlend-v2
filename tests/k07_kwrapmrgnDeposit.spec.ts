@@ -28,7 +28,7 @@ import {
   assertKeysEqual,
 } from "./utils/genericTests";
 import { Marginfi } from "../target/types/marginfi";
-import { ASSET_TAG_DEFAULT, defaultKwrapBankConfig } from "./utils/types";
+import { ASSET_TAG_DEFAULT, BANK_TYPE_KWRAP, defaultKwrapBankConfig } from "./utils/types";
 import {
   addKwrapBank,
   freshDeposit,
@@ -187,6 +187,8 @@ describe("Deposit funds into kwrapped banks", () => {
     // There is now an unsynced deposit...
     const expectedUnsyncAmount = depositAmount * 10 ** ecosystem.usdcDecimals;
     assertBNEqual(position.unsynced, expectedUnsyncAmount);
+    // The refreshed slot only updates when accrueing interest
+    assertBNEqual(kwrapAcc.marketInfo[0].refreshedSlot, 0);
 
     // no change
     assertKeysEqual(position.bank, usdcBank);
@@ -207,6 +209,7 @@ describe("Deposit funds into kwrapped banks", () => {
     assertI80F48Equal(balance.assetShares, expectedAmt);
     assertKeysEqual(balance.bankPk, usdcBank);
     assert.equal(balance.bankAssetTag, ASSET_TAG_DEFAULT);
+    assert.equal(balance.bankKwrapState, BANK_TYPE_KWRAP);
   });
 
   it("(permissionless) user 0 syncs with bank - happy path", async () => {

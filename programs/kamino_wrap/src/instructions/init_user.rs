@@ -11,7 +11,7 @@ pub fn init_user_account(ctx: Context<InitUser>, bound_account: Pubkey) -> Resul
     user_account.key = ctx.accounts.user_account.key();
     user_account.user = ctx.accounts.user.key();
     user_account.bump_seed = ctx.bumps.user_account;
-    user_account.bound_account = bound_account;
+    user_account.marginfi_account = bound_account;
 
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
 

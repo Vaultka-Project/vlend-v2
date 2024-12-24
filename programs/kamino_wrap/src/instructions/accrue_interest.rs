@@ -8,7 +8,7 @@
 // complicates the front-end, such as displaying account health, displaying a bank's net deposits,
 // and so forth.
 use crate::errors::ErrorCode;
-use crate::state::{MinimalObligation, UserAccount, POSITION_ACTIVE};
+use crate::state::{MinimalObligation, UserAccount, ACCRUE_SLOT_TOLERANCE, POSITION_ACTIVE};
 use anchor_lang::prelude::*;
 
 pub fn accrue_interest(ctx: Context<AccrueInterest>) -> Result<()> {
@@ -29,8 +29,9 @@ pub fn accrue_interest(ctx: Context<AccrueInterest>) -> Result<()> {
     let (_discriminator, data) = obligation_bytes.split_at(8);
     let obligation = MinimalObligation::from_bytes(data);
 
-    // ??? Add some tolerance here? Typically, a few slots of interest does not make much difference.
-    if obligation.last_update_slot != slot {
+    // ??? Should we have a tolerance here AND at risk-compute time, or just at risk-compute time?
+    // This approach essentially gives up to 2 * slot tolerance slots for the final balance computation
+    if obligation.last_update_slot + (ACCRUE_SLOT_TOLERANCE as u64) < slot {
         return err!(ErrorCode::ObligationStale);
     }
 
@@ -48,6 +49,7 @@ pub fn accrue_interest(ctx: Context<AccrueInterest>) -> Result<()> {
             // do nothing, the position is inactive
         }
     }
+    market_info.refreshed_slot = slot;
 
     Ok(())
 }

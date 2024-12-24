@@ -36,8 +36,8 @@ pub mod kamino_wrap {
         instructions::existing_deposit(ctx, amount)
     }
 
-    pub fn init_user(ctx: Context<InitUser>, bound_account: Pubkey) -> Result<()> {
-        instructions::init_user_account(ctx, bound_account)
+    pub fn init_user(ctx: Context<InitUser>, marginfi_account: Pubkey) -> Result<()> {
+        instructions::init_user_account(ctx, marginfi_account)
     }
 
     pub fn init_metadata(ctx: Context<InitMetaData>, recent_slot: u64) -> Result<()> {

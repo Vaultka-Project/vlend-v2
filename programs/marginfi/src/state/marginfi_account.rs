@@ -17,6 +17,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 use fixed::types::I80F48;
+use kwrap::state::{UserAccount, ACCRUE_SLOT_TOLERANCE};
 use std::{
     cmp::{max, min},
     ops::Not,
@@ -258,6 +259,7 @@ impl<'info> BankAccountWithPriceFeed<'_, 'info> {
     fn calc_weighted_assets_and_liabilities_values<'a>(
         &'a self,
         requirement_type: RequirementType,
+        user_account: UserAccount,
     ) -> MarginfiResult<(I80F48, I80F48)>
     where
         'info: 'a,
@@ -270,7 +272,7 @@ impl<'info> BankAccountWithPriceFeed<'_, 'info> {
                 let bank = bank_al.load()?;
                 match side {
                     BalanceSide::Assets => Ok((
-                        self.calc_weighted_assets(requirement_type, &bank)?,
+                        self.calc_weighted_assets(requirement_type, &bank, user_account)?,
                         I80F48::ZERO,
                     )),
                     BalanceSide::Liabilities => Ok((
@@ -288,6 +290,7 @@ impl<'info> BankAccountWithPriceFeed<'_, 'info> {
         &'a self,
         requirement_type: RequirementType,
         bank: &'a Bank,
+        user_account: UserAccount,
     ) -> MarginfiResult<I80F48> {
         match bank.config.risk_tier {
             RiskTier::Collateral => {
@@ -330,8 +333,60 @@ impl<'info> BankAccountWithPriceFeed<'_, 'info> {
                 )
             }
             RiskTier::Kwrap => {
-                // TODO
-                Ok(I80F48::ZERO)
+                let price_feed = self.try_get_price_feed();
+
+                if matches!(
+                    (&price_feed, requirement_type),
+                    (&Err(PriceFeedError::StaleOracle), RequirementType::Initial)
+                ) {
+                    debug!("Skipping stale oracle");
+                    return Ok(I80F48::ZERO);
+                }
+
+                let price_feed = price_feed?;
+
+                let mut asset_weight = bank
+                    .config
+                    .get_weight(requirement_type, BalanceSide::Assets);
+
+                let lower_price = price_feed.get_price_of_type(
+                    requirement_type.get_oracle_price_type(),
+                    Some(PriceBias::Low),
+                )?;
+
+                if matches!(requirement_type, RequirementType::Initial) {
+                    if let Some(discount) =
+                        bank.maybe_get_asset_weight_init_discount(lower_price)?
+                    {
+                        asset_weight = asset_weight
+                            .checked_mul(discount)
+                            .ok_or_else(math_error!())?;
+                    }
+                }
+
+                let slot = Clock::get().unwrap().slot;
+                let (positions_synced, infos, _positions) =
+                    user_account.check_positions_synced(&self.bank.key(), slot, true);
+                check!(
+                    positions_synced,
+                    MarginfiError::KwrapSyncFailed
+                );
+                for info in infos.iter() {
+                    check!(
+                        info.refreshed_slot + (ACCRUE_SLOT_TOLERANCE as u64) >= slot,
+                        MarginfiError::KwrapSyncFailed
+                    );
+                }
+
+                // TODO if we want the extra validation, we can take the obligation as an ai, load
+                // it here, and validate against the market price stored on Kamino's end...
+
+                calc_value(
+                    bank.get_asset_amount(self.balance.asset_shares.into())?,
+                    lower_price,
+                    bank.mint_decimals,
+                    Some(asset_weight),
+                )
             }
             RiskTier::Isolated => Ok(I80F48::ZERO),
         }
@@ -494,16 +549,18 @@ impl<'info> RiskEngine<'_, 'info> {
     /// `IN_FLASHLOAN_FLAG` behavior.
     /// - Health check is skipped.
     /// - `remaining_ais` can be an empty vec.
+    /// - user_account - required if the user has any kwrapped positions, otherwise pass UserAccount::zeroed()
     pub fn check_account_init_health<'a>(
         marginfi_account: &'a MarginfiAccount,
         remaining_ais: &'info [AccountInfo<'info>],
+        user_account: UserAccount,
     ) -> MarginfiResult<()> {
         if marginfi_account.get_flag(IN_FLASHLOAN_FLAG) {
             return Ok(());
         }
 
         Self::new_no_flashloan_check(marginfi_account, remaining_ais)?
-            .check_account_health(RiskRequirementType::Initial)?;
+            .check_account_health(RiskRequirementType::Initial, user_account)?;
 
         Ok(())
     }
@@ -512,13 +569,16 @@ impl<'info> RiskEngine<'_, 'info> {
     pub fn get_account_health_components(
         &self,
         requirement_type: RiskRequirementType,
+        user_account: UserAccount,
     ) -> MarginfiResult<(I80F48, I80F48)> {
         let mut total_assets = I80F48::ZERO;
         let mut total_liabilities = I80F48::ZERO;
 
         for a in &self.bank_accounts_with_price {
-            let (assets, liabilities) =
-                a.calc_weighted_assets_and_liabilities_values(requirement_type.to_weight_type())?;
+            let (assets, liabilities) = a.calc_weighted_assets_and_liabilities_values(
+                requirement_type.to_weight_type(),
+                user_account,
+            )?;
 
             debug!(
                 "Balance {}, assets: {}, liabilities: {}",
@@ -534,21 +594,26 @@ impl<'info> RiskEngine<'_, 'info> {
         Ok((total_assets, total_liabilities))
     }
 
-    pub fn get_account_health(
-        &'info self,
+    // TODO unused, remove
+    // pub fn get_account_health(
+    //     &'info self,
+    //     requirement_type: RiskRequirementType,
+    // ) -> MarginfiResult<I80F48> {
+    //     let (total_weighted_assets, total_weighted_liabilities) =
+    //         self.get_account_health_components(requirement_type, UserAccount::zeroed())?;
+
+    //     Ok(total_weighted_assets
+    //         .checked_sub(total_weighted_liabilities)
+    //         .ok_or_else(math_error!())?)
+    // }
+
+    fn check_account_health(
+        &self,
         requirement_type: RiskRequirementType,
-    ) -> MarginfiResult<I80F48> {
+        user_account: UserAccount,
+    ) -> MarginfiResult {
         let (total_weighted_assets, total_weighted_liabilities) =
-            self.get_account_health_components(requirement_type)?;
-
-        Ok(total_weighted_assets
-            .checked_sub(total_weighted_liabilities)
-            .ok_or_else(math_error!())?)
-    }
-
-    fn check_account_health(&self, requirement_type: RiskRequirementType) -> MarginfiResult {
-        let (total_weighted_assets, total_weighted_liabilities) =
-            self.get_account_health_components(requirement_type)?;
+            self.get_account_health_components(requirement_type, user_account)?;
 
         debug!(
             "check_health: assets {} - liabs: {}",
@@ -571,6 +636,7 @@ impl<'info> RiskEngine<'_, 'info> {
     pub fn check_pre_liquidation_condition_and_get_account_health(
         &self,
         bank_pk: &Pubkey,
+        user_account: UserAccount,
     ) -> MarginfiResult<I80F48> {
         check!(
             !self.marginfi_account.get_flag(IN_FLASHLOAN_FLAG),
@@ -596,7 +662,7 @@ impl<'info> RiskEngine<'_, 'info> {
         );
 
         let (assets, liabs) =
-            self.get_account_health_components(RiskRequirementType::Maintenance)?;
+            self.get_account_health_components(RiskRequirementType::Maintenance, user_account)?;
 
         let account_health = assets.checked_sub(liabs).ok_or_else(math_error!())?;
 
@@ -628,6 +694,7 @@ impl<'info> RiskEngine<'_, 'info> {
         &self,
         bank_pk: &Pubkey,
         pre_liquidation_health: I80F48,
+        user_account: UserAccount,
     ) -> MarginfiResult<I80F48> {
         check!(
             !self.marginfi_account.get_flag(IN_FLASHLOAN_FLAG),
@@ -655,7 +722,7 @@ impl<'info> RiskEngine<'_, 'info> {
         );
 
         let (assets, liabs) =
-            self.get_account_health_components(RiskRequirementType::Maintenance)?;
+            self.get_account_health_components(RiskRequirementType::Maintenance, user_account)?;
 
         let account_health = assets.checked_sub(liabs).ok_or_else(math_error!())?;
 
@@ -681,9 +748,9 @@ impl<'info> RiskEngine<'_, 'info> {
 
     /// Check that the account is in a bankrupt state.
     /// Account needs to be insolvent and total value of assets need to be below the bankruptcy threshold.
-    pub fn check_account_bankrupt(&self) -> MarginfiResult {
+    pub fn check_account_bankrupt(&self, user_account: UserAccount) -> MarginfiResult {
         let (total_assets, total_liabilities) =
-            self.get_account_health_components(RiskRequirementType::Equity)?;
+            self.get_account_health_components(RiskRequirementType::Equity, user_account)?;
 
         check!(
             !self.marginfi_account.get_flag(IN_FLASHLOAN_FLAG),

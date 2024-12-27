@@ -12,6 +12,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
+use bytemuck::Zeroable;
 use fixed::types::I80F48;
 use kwrap::state::UserAccount;
 use solana_program::{clock::Clock, sysvar::Sysvar};
@@ -51,25 +52,28 @@ pub fn lending_account_borrow<'info>(
     let kwrap_required =
         marginfi_account.has_kwrap_positions() && ctx.accounts.user_account.is_none();
     check!(kwrap_required, MarginfiError::KwrapUserAccountMissing);
-
-    let user_acc = ctx.accounts.user_account.as_ref().unwrap();
-    let user_acc = user_acc.load()?;
+    let user_account = if ctx.accounts.user_account.is_some() {
+        let acc = ctx.accounts.user_account.as_ref().unwrap();
+        *acc.load()?
+    } else {
+        UserAccount::zeroed()
+    };
 
     check!(
         !marginfi_account.get_flag(DISABLED_FLAG),
         MarginfiError::AccountDisabled
     );
 
-    bank_loader.load_mut()?.accrue_interest(
-        clock.unix_timestamp,
-        group,
-        #[cfg(not(feature = "client"))]
-        bank_loader.key(),
-    )?;
-
     let mut origination_fee: I80F48 = I80F48::ZERO;
     {
         let mut bank = bank_loader.load_mut()?;
+
+        bank.accrue_interest(
+            clock.unix_timestamp,
+            group,
+            #[cfg(not(feature = "client"))]
+            bank_loader.key(),
+        )?;
 
         validate_asset_tags(&bank, &marginfi_account)?;
         check!(
@@ -179,7 +183,7 @@ pub fn lending_account_borrow<'info>(
 
     // Check account health, if below threshold fail transaction
     // Assuming `ctx.remaining_accounts` holds only oracle accounts
-    RiskEngine::check_account_init_health(&marginfi_account, ctx.remaining_accounts)?;
+    RiskEngine::check_account_init_health(&marginfi_account, ctx.remaining_accounts, user_account)?;
 
     Ok(())
 }
@@ -189,7 +193,6 @@ pub struct LendingAccountBorrow<'info> {
     pub group: AccountLoader<'info, MarginfiGroup>,
 
     #[account(
-        mut,
         has_one = marginfi_account
     )]
     pub user_account: Option<AccountLoader<'info, UserAccount>>,

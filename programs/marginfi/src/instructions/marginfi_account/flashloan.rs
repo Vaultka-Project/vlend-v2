@@ -1,4 +1,6 @@
 use anchor_lang::{prelude::*, Discriminator};
+use bytemuck::Zeroable;
+use kwrap::state::UserAccount;
 use solana_program::{
     instruction::{get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT},
     sysvar::{self, instructions},
@@ -133,7 +135,17 @@ pub fn lending_account_end_flashloan<'info>(
 
     marginfi_account.unset_flag(IN_FLASHLOAN_FLAG);
 
-    RiskEngine::check_account_init_health(&marginfi_account, ctx.remaining_accounts)?;
+    let kwrap_required =
+        marginfi_account.has_kwrap_positions() && ctx.accounts.user_account.is_none();
+    check!(kwrap_required, MarginfiError::KwrapUserAccountMissing);
+    let user_account = if ctx.accounts.user_account.is_some() {
+        let acc = ctx.accounts.user_account.as_ref().unwrap();
+        *acc.load()?
+    } else {
+        UserAccount::zeroed()
+    };
+
+    RiskEngine::check_account_init_health(&marginfi_account, ctx.remaining_accounts, user_account)?;
 
     Ok(())
 }
@@ -144,4 +156,8 @@ pub struct LendingAccountEndFlashloan<'info> {
     pub marginfi_account: AccountLoader<'info, MarginfiAccount>,
     #[account(address = marginfi_account.load()?.authority)]
     pub signer: Signer<'info>,
+    #[account(
+        has_one = marginfi_account
+    )]
+    pub user_account: Option<AccountLoader<'info, UserAccount>>,
 }

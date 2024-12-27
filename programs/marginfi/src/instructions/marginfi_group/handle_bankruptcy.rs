@@ -16,7 +16,9 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
+use bytemuck::Zeroable;
 use fixed::types::I80F48;
+use kwrap::state::UserAccount;
 use std::cmp::{max, min};
 
 /// Handle a bankrupt marginfi account.
@@ -52,8 +54,12 @@ pub fn lending_pool_handle_bankruptcy<'info>(
     drop(bank);
 
     let mut marginfi_account = marginfi_account_loader.load_mut()?;
+    
+    // TODO
+    let user_account = UserAccount::zeroed();
 
-    RiskEngine::new(&marginfi_account, ctx.remaining_accounts)?.check_account_bankrupt()?;
+    RiskEngine::new(&marginfi_account, ctx.remaining_accounts)?
+        .check_account_bankrupt(user_account)?;
 
     let mut bank = bank_loader.load_mut()?;
 

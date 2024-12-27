@@ -187,7 +187,7 @@ describe("Deposit funds into kwrapped banks", () => {
     // There is now an unsynced deposit...
     const expectedUnsyncAmount = depositAmount * 10 ** ecosystem.usdcDecimals;
     assertBNEqual(position.unsynced, expectedUnsyncAmount);
-    // The refreshed slot only updates when accrueing interest
+    // The refreshed slot only updates when accruing interest
     assertBNEqual(kwrapAcc.marketInfo[0].refreshedSlot, 0);
 
     // no change

@@ -635,6 +635,7 @@ impl MarginfiAccountFixture {
         let mut account_metas = marginfi::accounts::LendingAccountEndFlashloan {
             marginfi_account: self.key,
             signer: self.ctx.borrow().payer.pubkey(),
+            user_account: None,
         }
         .to_account_metas(Some(true));
 

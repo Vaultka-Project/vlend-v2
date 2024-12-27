@@ -318,7 +318,7 @@ describe("Init kwrap-controlled Kamino user", () => {
     );
     assertKeysEqual(userAccount.key, userAccountKey);
     assertKeysEqual(userAccount.user, user.wallet.publicKey);
-    assertKeysEqual(userAccount.boundAccount, mrgnAccount);
+    assertKeysEqual(userAccount.marginfiAccount, mrgnAccount);
     const now = Math.floor(Date.now() / 1000);
     assertBNApproximately(userAccount.lastActivity, now, 2);
     assert.equal(userAccount.bumpSeed, bump);

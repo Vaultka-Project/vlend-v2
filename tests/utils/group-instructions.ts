@@ -26,7 +26,8 @@ export const MAX_ORACLE_KEYS = 5;
 
 /**
  * * admin/feePayer - must sign
- * * bank - use a fresh keypair, must sign
+ * * bank - if not using a seed, use a fresh keypair, and must sign. If using a seed, pass any key,
+ *   this will be ignored.
  */
 export type AddBankArgs = {
   marginfiGroup: PublicKey;
@@ -72,6 +73,66 @@ export const addBank = (program: Program<Marginfi>, args: AddBankArgs) => {
       feePayer: args.feePayer,
       bankMint: args.bankMint,
       bank: args.bank,
+      // globalFeeState: deriveGlobalFeeState(id),
+      // globalFeeWallet: args.globalFeeWallet,
+      // liquidityVaultAuthority = deriveLiquidityVaultAuthority(id, bank);
+      // liquidityVault = deriveLiquidityVault(id, bank);
+      // insuranceVaultAuthority = deriveInsuranceVaultAuthority(id, bank);
+      // insuranceVault = deriveInsuranceVault(id, bank);
+      // feeVaultAuthority = deriveFeeVaultAuthority(id, bank);
+      // feeVault = deriveFeeVault(id, bank);
+      // rent = SYSVAR_RENT_PUBKEY
+      tokenProgram: TOKEN_PROGRAM_ID,
+      // systemProgram: SystemProgram.programId,
+    })
+    .remainingAccounts([oracleMeta])
+    .instruction();
+
+  return ix;
+};
+
+export const addBankWithSeed = (
+  program: Program<Marginfi>,
+  args: AddBankArgs,
+  seed: BN
+) => {
+  // const id = program.programId;
+  // const bank = args.bank;
+
+  // Note: oracle is passed as a key in config AND as an acc in remaining accs
+  const oracleMeta: AccountMeta = {
+    pubkey: args.config.oracleKey,
+    isSigner: false,
+    isWritable: false,
+  };
+
+  const ix = program.methods
+    .lendingPoolAddBankWithSeed(
+      {
+        assetWeightInit: args.config.assetWeightInit,
+        assetWeightMaint: args.config.assetWeightMaint,
+        liabilityWeightInit: args.config.liabilityWeightInit,
+        liabilityWeightMaint: args.config.liabilityWeightMain,
+        depositLimit: args.config.depositLimit,
+        interestRateConfig: args.config.interestRateConfig,
+        operationalState: args.config.operationalState,
+        oracleSetup: args.config.oracleSetup,
+        oracleKey: args.config.oracleKey,
+        borrowLimit: args.config.borrowLimit,
+        riskTier: args.config.riskTier,
+        assetTag: args.config.assetTag,
+        pad0: [0, 0, 0, 0, 0, 0],
+        totalAssetValueInitLimit: args.config.totalAssetValueInitLimit,
+        oracleMaxAge: args.config.oracleMaxAge,
+      },
+      seed
+    )
+    .accounts({
+      marginfiGroup: args.marginfiGroup,
+      admin: args.admin,
+      feePayer: args.feePayer,
+      bankMint: args.bankMint,
+      // bank: args.bank, // derived from seeds...
       // globalFeeState: deriveGlobalFeeState(id),
       // globalFeeWallet: args.globalFeeWallet,
       // liquidityVaultAuthority = deriveLiquidityVaultAuthority(id, bank);
@@ -366,7 +427,7 @@ export const propagateStakedSettings = (
         } as AccountMeta,
       ]
     : [];
-    
+
   const ix = program.methods
     .propagateStakedSettings()
     .accounts({

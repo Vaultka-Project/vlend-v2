@@ -68,14 +68,17 @@ pub fn sync_kwrap(ctx: Context<SyncKwrap>) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct SyncKwrap<'info> {
-    #[account(mut)]
-    pub marginfi_account: AccountLoader<'info, MarginfiAccount>,
-
     #[account(
         mut,
-        has_one = marginfi_account
+        // TODO Anchor isn't able to imply this arg this for some reason (different lib?)...
+        // Try again in a future Anchor version...
+        //has_one = marginfi_account
+        constraint = user_account.load()?.marginfi_account == marginfi_account.key()
     )]
     pub user_account: AccountLoader<'info, UserAccount>,
+
+    #[account(mut)]
+    pub marginfi_account: AccountLoader<'info, MarginfiAccount>,
 
     /// CHECK: this ix does nothing if a bad bank is passed
     #[account(mut)]

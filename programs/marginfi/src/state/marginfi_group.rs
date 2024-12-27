@@ -1347,6 +1347,8 @@ pub struct BankConfig {
     /// This is useful for limiting the damage of orcale attacks.
     ///
     /// Value is UI USD value, for example value 100 -> $100
+    /// 
+    /// 0 to disable this feature (i.e. no limit)
     pub total_asset_value_init_limit: u64,
 
     /// Time window in seconds for the oracle price feed to be considered live.

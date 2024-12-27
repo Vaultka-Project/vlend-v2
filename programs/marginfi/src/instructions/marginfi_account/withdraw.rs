@@ -11,7 +11,9 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
+use bytemuck::Zeroable;
 use fixed::types::I80F48;
+use kwrap::state::UserAccount;
 use solana_program::{clock::Clock, sysvar::Sysvar};
 
 /// 1. Accrue interest
@@ -126,7 +128,12 @@ pub fn lending_account_withdraw<'info>(
 
     // Check account health, if below threshold fail transaction
     // Assuming `ctx.remaining_accounts` holds only oracle accounts
-    RiskEngine::check_account_init_health(&marginfi_account, ctx.remaining_accounts)?;
+    // TODO add user account
+    RiskEngine::check_account_init_health(
+        &marginfi_account,
+        ctx.remaining_accounts,
+        UserAccount::zeroed(),
+    )?;
 
     Ok(())
 }

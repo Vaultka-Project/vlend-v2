@@ -13,7 +13,9 @@ use crate::{
 use crate::{check, debug, prelude::*, utils};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
+use bytemuck::Zeroable;
 use fixed::types::I80F48;
+use kwrap::state::UserAccount;
 use solana_program::clock::Clock;
 use solana_program::sysvar::Sysvar;
 
@@ -91,6 +93,9 @@ pub fn lending_account_liquidate<'info>(
         "Asset and liability bank cannot be the same"
     );
 
+    // TODO (Note that Box is required, this ix is way beyond redlined in stack usage)
+    let user_account: Box<UserAccount> = Box::new(UserAccount::zeroed());
+
     let LendingAccountLiquidate {
         liquidator_marginfi_account: liquidator_marginfi_account_loader,
         liquidatee_marginfi_account: liquidatee_marginfi_account_loader,
@@ -131,7 +136,10 @@ pub fn lending_account_liquidate<'info>(
             &ctx.remaining_accounts[liquidatee_accounts_starting_pos..];
 
         RiskEngine::new(&liquidatee_marginfi_account, liquidatee_remaining_accounts)?
-            .check_pre_liquidation_condition_and_get_account_health(&ctx.accounts.liab_bank.key())?
+            .check_pre_liquidation_condition_and_get_account_health(
+                &ctx.accounts.liab_bank.key(),
+                *user_account,
+            )?
     };
 
     // ##Accounting changes##
@@ -359,12 +367,14 @@ pub fn lending_account_liquidate<'info>(
             .check_post_liquidation_condition_and_get_account_health(
                 &ctx.accounts.liab_bank.key(),
                 pre_liquidation_health,
+                *user_account,
             )?;
 
     // Verify liquidator account health
     RiskEngine::check_account_init_health(
         &liquidator_marginfi_account,
         liquidator_remaining_accounts,
+        *user_account,
     )?;
 
     emit!(LendingAccountLiquidateEvent {

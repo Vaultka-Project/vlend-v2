@@ -279,7 +279,7 @@ export type BankConfig = {
   liabilityWeightMain: WrappedI80F48;
 
   depositLimit: BN;
-  interestRateConfig: InterestRateConfigRaw;
+  interestRateConfig: InterestRateConfigRawWithOrigination;
 
   /** Paused = 0, Operational = 1, ReduceOnly = 2 */
   operationalState: OperationalStateRaw;

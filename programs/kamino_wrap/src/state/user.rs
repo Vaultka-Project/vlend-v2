@@ -30,7 +30,7 @@ pub const USER_ACCOUNT_PADDING: usize = 128;
 #[account(zero_copy)]
 #[repr(C)]
 pub struct UserAccount {
-    /// This account's own key. A PDA of `user`, `bound_account`, (0 as u8), and `USER_ACCOUNT_SEED`
+    /// This account's own key. A PDA of `user`, `marginfi_account`, (0 as u8), and `USER_ACCOUNT_SEED`
     pub key: Pubkey,
     /// This account's owner. Must sign most transactions related to this account.
     pub user: Pubkey,
@@ -150,6 +150,46 @@ impl UserAccount {
                     position.synced_slot = slot;
                 }
             }
+        }
+    }
+
+    /// Across all obligations stored on this acount with the given bank, returns false if any
+    /// position has not been synced. Returns true if all obligations are synced or if there are no
+    /// positions with the target bank. If `err_dne` is set, also returns false if no position was
+    /// found with the target bank. 
+    /// 
+    /// Also returns a list of CollateralizedPosition for this bank and any KaminoMarketInfo
+    /// involved. May not be a complete list if returning false, and the failing Position will be
+    /// last in the list.
+    pub fn check_positions_synced(
+        &self,
+        target_bank: &Pubkey,
+        slot: u64,
+        err_dne: bool,
+    ) -> (bool, Vec<KaminoMarketInfo>, Vec<CollateralizedPosition>) {
+        let mut bank_exists = false;
+        let mut infos: Vec<KaminoMarketInfo> = Vec::new();
+        let mut positions: Vec<CollateralizedPosition> = Vec::new();
+        for market_info in self.market_info.iter() {
+            for position in market_info.positions.iter() {
+                if position.bank.eq(target_bank) {
+                    bank_exists = true;
+                    infos.push(*market_info);
+                    positions.push(*position);
+                    if position.synced_slot + (ACCRUE_SLOT_TOLERANCE as u64) >= slot
+                        || position.unsynced != 0
+                    {
+                        return (false, infos, positions);
+                    }
+                }
+            }
+        }
+        // TODO better way to dedupe?
+        infos.dedup_by(|a, b| a.obligation.eq(&b.obligation));
+        if !bank_exists && err_dne {
+            return (false, infos, positions);
+        } else {
+            return (true, infos, positions);
         }
     }
 }

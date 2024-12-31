@@ -169,11 +169,7 @@ impl OraclePriceFeedAdapter {
                 // decimal-adjusted because both SOL and stake positions use 9 decimals
 
                 // Note: mainnet/staging/devnet use "push" oracles, localnet uses legacy
-                if cfg!(any(
-                    feature = "mainnet-beta",
-                    feature = "staging",
-                    feature = "devnet"
-                )) {
+                if live!() {
                     let account_info = &ais[0];
 
                     check!(
@@ -237,22 +233,16 @@ impl OraclePriceFeedAdapter {
                 }
             }
             OracleSetup::KwrapPythPush => {
-                check!(ais.len() == 2, MarginfiError::InvalidOracleAccount);
+                // TODO sanity check against the reserve's reported price...
+                check!(ais.len() == 1, MarginfiError::InvalidOracleAccount);
 
                 check!(
-                    ais[1].key == &bank_config.oracle_keys[1],
+                    ais[0].key == &bank_config.oracle_keys[0],
                     MarginfiError::InvalidOracleAccount
                 );
 
-                // TODO load the reserve's locked price information...
-                // TODO compare the reserve's locked price information against the local oracle
-
                 // Note: mainnet/staging/devnet use "push" oracles, localnet uses legacy
-                if cfg!(any(
-                    feature = "mainnet-beta",
-                    feature = "staging",
-                    feature = "devnet"
-                )) {
+                if live!() {
                     let account_info = &ais[0];
 
                     check!(
@@ -268,7 +258,6 @@ impl OraclePriceFeedAdapter {
                         max_age,
                     )?;
 
-                    // TODO return the internal Kamino Reserve price, not our local oracle price
                     let price = OraclePriceFeedAdapter::PythPushOracle(feed);
                     Ok(price)
                 } else {

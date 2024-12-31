@@ -70,13 +70,12 @@ export const depositIx = (program: Program<Marginfi>, args: DepositArgs) => {
 };
 
 export type BorrowIxArgs = {
-  marginfiGroup: PublicKey;
   marginfiAccount: PublicKey;
-  authority: PublicKey;
   bank: PublicKey;
   tokenAccount: PublicKey;
   remaining: PublicKey[];
   amount: BN;
+  userKwrapAccount: PublicKey | null;
 };
 
 /**
@@ -84,6 +83,7 @@ export type BorrowIxArgs = {
  * * `authority` - must sign, but does not have to own the `tokenAccount`
  * * `remaining` - pass bank/oracles for each bank the user is involved with, in the SAME ORDER they
  *   appear in userAcc.balances (e.g. `[bank0, oracle0, bank1, oracle1]`)
+ * * `userKwrapAccount` - required if the user has any kwrapped positions, otherwise pass null
  * @param program
  * @param args
  * @returns
@@ -97,9 +97,10 @@ export const borrowIx = (program: Program<Marginfi>, args: BorrowIxArgs) => {
   const ix = program.methods
     .lendingAccountBorrow(args.amount)
     .accounts({
-      marginfiGroup: args.marginfiGroup,
+      // marginfiGroup: args.marginfiGroup, // implied from bank
+      userAccount: args.userKwrapAccount,
       marginfiAccount: args.marginfiAccount,
-      signer: args.authority,
+      // authority: args.authority, // implied from marginfiAccount
       bank: args.bank,
       destinationTokenAccount: args.tokenAccount,
       // bankLiquidityVaultAuthority = deriveLiquidityVaultAuthority(id, bank);

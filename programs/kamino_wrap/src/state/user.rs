@@ -156,8 +156,8 @@ impl UserAccount {
     /// Across all obligations stored on this acount with the given bank, returns false if any
     /// position has not been synced. Returns true if all obligations are synced or if there are no
     /// positions with the target bank. If `err_dne` is set, also returns false if no position was
-    /// found with the target bank. 
-    /// 
+    /// found with the target bank.
+    ///
     /// Also returns a list of CollateralizedPosition for this bank and any KaminoMarketInfo
     /// involved. May not be a complete list if returning false, and the failing Position will be
     /// last in the list.
@@ -176,9 +176,15 @@ impl UserAccount {
                     bank_exists = true;
                     infos.push(*market_info);
                     positions.push(*position);
-                    if position.synced_slot + (ACCRUE_SLOT_TOLERANCE as u64) >= slot
+                    if position.synced_slot + (ACCRUE_SLOT_TOLERANCE as u64) < slot
                         || position.unsynced != 0
                     {
+                        msg!(
+                            "Sync failed on position: {:?} has slot {:?} and is now slot {:?}",
+                            market_info.obligation,
+                            position.synced_slot,
+                            slot
+                        );
                         return (false, infos, positions);
                     }
                 }

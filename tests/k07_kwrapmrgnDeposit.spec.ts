@@ -28,7 +28,11 @@ import {
   assertKeysEqual,
 } from "./utils/genericTests";
 import { Marginfi } from "../target/types/marginfi";
-import { ASSET_TAG_DEFAULT, BANK_TYPE_KWRAP, defaultKwrapBankConfig } from "./utils/types";
+import {
+  ASSET_TAG_DEFAULT,
+  BANK_TYPE_KWRAP,
+  defaultKwrapBankConfig,
+} from "./utils/types";
 import {
   addKwrapBank,
   freshDeposit,

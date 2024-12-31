@@ -49,14 +49,22 @@ pub fn lending_account_borrow<'info>(
     let group = &marginfi_group_loader.load()?;
     let program_fee_rate: I80F48 = group.fee_state_cache.program_fee_rate.into();
 
-    let kwrap_required =
-        marginfi_account.has_kwrap_positions() && ctx.accounts.user_account.is_none();
-    check!(kwrap_required, MarginfiError::KwrapUserAccountMissing);
-    let user_account = if ctx.accounts.user_account.is_some() {
-        let acc = ctx.accounts.user_account.as_ref().unwrap();
-        *acc.load()?
+    let kwrap_required = marginfi_account.has_kwrap_positions();
+    let kwrap_passed = ctx.accounts.user_account.is_some();
+    check!(
+        !kwrap_required || (kwrap_required && kwrap_passed),
+        MarginfiError::KwrapUserAccountMissing
+    );
+    // Note: this instruction is close to the stack limit, unboxing will cause stack errors.
+    let user_account = if kwrap_passed {
+        let acc = Box::new(*ctx.accounts.user_account.as_ref().unwrap().load()?);
+        check!(
+            acc.marginfi_account == marginfi_account_loader.key(),
+            MarginfiError::InvalidKwrapAccount
+        );
+        acc
     } else {
-        UserAccount::zeroed()
+        Box::new(UserAccount::zeroed())
     };
 
     check!(
@@ -183,7 +191,11 @@ pub fn lending_account_borrow<'info>(
 
     // Check account health, if below threshold fail transaction
     // Assuming `ctx.remaining_accounts` holds only oracle accounts
-    RiskEngine::check_account_init_health(&marginfi_account, ctx.remaining_accounts, user_account)?;
+    RiskEngine::check_account_init_health(
+        &marginfi_account,
+        ctx.remaining_accounts,
+        *user_account,
+    )?;
 
     Ok(())
 }
@@ -192,9 +204,6 @@ pub fn lending_account_borrow<'info>(
 pub struct LendingAccountBorrow<'info> {
     pub group: AccountLoader<'info, MarginfiGroup>,
 
-    #[account(
-        has_one = marginfi_account
-    )]
     pub user_account: Option<AccountLoader<'info, UserAccount>>,
 
     #[account(

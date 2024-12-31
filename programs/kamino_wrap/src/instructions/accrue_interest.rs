@@ -43,6 +43,9 @@ pub fn accrue_interest(ctx: Context<AccrueInterest>) -> Result<()> {
                 market_info.positions[i].unsynced =
                     deposit.deposited_amount - market_info.positions[i].amount;
             } else {
+                // TODO technically a socialized loss can trigger this, from a risk PoV we should
+                // remove this panic to allow socialized losses, but perhaps something should fire
+                // in that event...
                 panic!("unexpected critical accounting error");
             }
         } else {
@@ -56,12 +59,7 @@ pub fn accrue_interest(ctx: Context<AccrueInterest>) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct AccrueInterest<'info> {
-    pub user: Signer<'info>,
-
-    #[account(
-        mut,
-        has_one = user
-    )]
+    #[account(mut)]
     pub user_account: AccountLoader<'info, UserAccount>,
 
     /// CHECK: Must be listed in user's `market_info` on the UserAccount provided

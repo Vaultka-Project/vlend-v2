@@ -137,7 +137,7 @@ pub enum MarginfiError {
     InvalidKaminoReserve,
     #[msg("User has Kwrapped positions: must pass a synced Kwrap User Account")] // 6057
     KwrapUserAccountMissing,
-    #[msg("User Kwrap sync failed: tried to accrue interest and sync again")] // 6058
+    #[msg("User Kwrap sync failed: try to accrue interest and sync again")] // 6058
     KwrapSyncFailed,
 }
 

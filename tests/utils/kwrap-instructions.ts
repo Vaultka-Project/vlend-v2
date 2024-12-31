@@ -5,10 +5,37 @@ import { BankConfigKwrap } from "./types";
 import { Marginfi } from "../../target/types/marginfi";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
+export type AccrueInterestArgs = {
+  userKwrapAccount: PublicKey;
+  obligation: PublicKey;
+};
+
+/**
+ * Permissionless, run this after accruing Kamino interest to sync accumulated interest with kwrap.
+ * The next `sync_kwrap` will then sync this interest with the mrgn bank.
+ * @param program
+ * @param args
+ * @returns
+ */
+export const accrueInterest = (
+  program: Program<KaminoWrap>,
+  args: AccrueInterestArgs
+) => {
+  const ix = program.methods
+    .accrueInterest()
+    .accounts({
+      userAccount: args.userKwrapAccount,
+      obligation: args.obligation,
+    })
+    .instruction();
+
+  return ix;
+};
+
 export type InitKwrapUserArgs = {
   user: PublicKey;
   payer: PublicKey;
-  boundAccount: PublicKey;
+  marginfiAccount: PublicKey;
 };
 
 export const initKwrapUser = (
@@ -16,7 +43,7 @@ export const initKwrapUser = (
   args: InitKwrapUserArgs
 ) => {
   const ix = program.methods
-    .initUser(args.boundAccount)
+    .initUser(args.marginfiAccount)
     .accounts({
       payer: args.payer,
       user: args.user,
@@ -303,6 +330,13 @@ export type SyncKwrapArgs = {
   bank: PublicKey;
 };
 
+/**
+ * Permissionless. Run before balance changes (borrow, withdraw, etc) to sync the actual balance of
+ * the user's kwrapped position including earned interest, new deposists, etc
+ * @param program
+ * @param args
+ * @returns
+ */
 export const syncKwrap = (program: Program<Marginfi>, args: SyncKwrapArgs) => {
   const ix = program.methods
     .syncKwrap()

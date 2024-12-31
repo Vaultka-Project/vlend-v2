@@ -109,10 +109,6 @@ pub fn lending_pool_add_bank_kwrap(
 
     bank.config.validate()?;
 
-    // The Kamino Reserve will provide the cannonical pricing for this asset.
-    // TODO we already store this in a field on the bank so we may not want to duplicate here...
-    bank.config.oracle_keys[1] = *reserve_key;
-
     bank.config
         .validate_oracle_setup(ctx.remaining_accounts, None, None, None)?;
 

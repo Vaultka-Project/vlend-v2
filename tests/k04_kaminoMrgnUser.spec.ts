@@ -295,10 +295,10 @@ describe("Init kwrap-controlled Kamino user", () => {
     const user = users[userIndex];
     const mrgnAccount = user.accounts.get(USER_ACCOUNT);
     let tx = new Transaction().add(
-      await initKwrapUser(kWrapProgram, {
+      await initKwrapUser(user.kwrapProgram, {
         payer: user.wallet.publicKey,
         user: user.wallet.publicKey,
-        boundAccount: mrgnAccount,
+        marginfiAccount: mrgnAccount,
       })
     );
 

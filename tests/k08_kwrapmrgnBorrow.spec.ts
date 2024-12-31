@@ -26,6 +26,7 @@ import {
   assertBNEqual,
   assertI80F48Equal,
   assertKeysEqual,
+  expectFailedTxWithError,
 } from "./utils/genericTests";
 import { Marginfi } from "../target/types/marginfi";
 import {
@@ -35,6 +36,7 @@ import {
   defaultKwrapBankConfig,
 } from "./utils/types";
 import {
+  accrueInterest,
   addKwrapBank,
   freshDeposit,
   registerKwrapDeposit,
@@ -56,7 +58,7 @@ import {
 } from "./utils/kamino-utils";
 import { updatePriceAccount } from "./utils/pyth_mocks";
 import { addBankWithSeed } from "./utils/group-instructions";
-import { accountInit, depositIx } from "./utils/user-instructions";
+import { accountInit, borrowIx, depositIx } from "./utils/user-instructions";
 import { createMintToInstruction } from "@solana/spl-token";
 
 describe("Deposit funds into kwrapped banks", () => {
@@ -201,21 +203,85 @@ describe("Deposit funds into kwrapped banks", () => {
     );
   });
 
-  // TODO...
-  // it("(user 0) borrows USDC against Kwrapped USDC - happy path", async () => {
-  //   const user = users[0];
-  //   const mrgnAccount = user.accounts.get(USER_ACCOUNT);
-  //   const kwrapAccount = user.accounts.get(KWRAP_USER_ACCOUNT);
-  //   const obligation = user.accounts.get(KWRAP_OBLIGATION);
-  //   await user.mrgnProgram.provider.sendAndConfirm(
-  //     new Transaction().add(
-  //       await syncKwrap(user.mrgnProgram, {
-  //         userKwrapAccount: kwrapAccount,
-  //         bank: usdcBank,
-  //       })
-  //     )
-  //   );
+  it("(user 0) borrows USDC against Kwrapped USDC without syncing - fails", async () => {
+    const user = users[0];
+    const mrgnAccount = user.accounts.get(USER_ACCOUNT);
+    const kwrapAccount = user.accounts.get(KWRAP_USER_ACCOUNT);
 
-  //   // TODO....
-  // });
+    await expectFailedTxWithError(async () => {
+      await user.mrgnProgram.provider.sendAndConfirm(
+        new Transaction().add(
+          await borrowIx(user.mrgnProgram, {
+            marginfiAccount: mrgnAccount,
+            bank: regularUsdcBank,
+            tokenAccount: user.usdcAccount,
+            remaining: [
+              usdcBank,
+              oracles.usdcOracle.publicKey,
+              regularUsdcBank,
+              oracles.usdcOracle.publicKey,
+            ],
+            amount: new BN(1000),
+            userKwrapAccount: kwrapAccount,
+          })
+        )
+      );
+    }, "KwrapSyncFailed");
+  });
+
+  it("(user 0) borrows USDC against Kwrapped USDC - happy path", async () => {
+    const user = users[0];
+    const mrgnAccount = user.accounts.get(USER_ACCOUNT);
+    const kwrapAccount = user.accounts.get(KWRAP_USER_ACCOUNT);
+    const market = kaminoAccounts.get(MARKET);
+    const reserveKey = kaminoAccounts.get(USDC_RESERVE);
+    const obligation = user.accounts.get(KWRAP_OBLIGATION);
+
+    // First the user refreshes their kamino obligation (a permissionless process), then registers
+    // accured interest with kwrap (also permissionless), and syncs (permissionless). Now their
+    // account is ready for balance changes.
+
+    await user.mrgnProgram.provider.sendAndConfirm(
+      new Transaction().add(
+        await simpleRefreshReserve(
+          klendProgram,
+          reserveKey,
+          market,
+          oracles.usdcOracle.publicKey
+        ),
+        await simpleRefreshObligation(klendProgram, market, obligation, [
+          reserveKey,
+        ]),
+        await accrueInterest(user.kwrapProgram, {
+          userKwrapAccount: kwrapAccount,
+          obligation: obligation,
+        }),
+        await syncKwrap(user.mrgnProgram, {
+          marginfiAccount: mrgnAccount,
+          userKwrapAccount: kwrapAccount,
+          bank: usdcBank,
+        })
+      )
+    );
+
+    await user.mrgnProgram.provider.sendAndConfirm(
+      new Transaction().add(
+        await borrowIx(user.mrgnProgram, {
+          marginfiAccount: mrgnAccount,
+          bank: regularUsdcBank,
+          tokenAccount: user.usdcAccount,
+          remaining: [
+            usdcBank,
+            oracles.usdcOracle.publicKey,
+            regularUsdcBank,
+            oracles.usdcOracle.publicKey,
+          ],
+          amount: new BN(1000),
+          userKwrapAccount: kwrapAccount,
+        })
+      )
+    );
+
+    // TODO sync assets...
+  });
 });

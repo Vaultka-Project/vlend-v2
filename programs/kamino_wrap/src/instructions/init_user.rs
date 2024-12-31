@@ -5,13 +5,13 @@ use crate::state::UserAccount;
 use anchor_lang::prelude::*;
 
 #[allow(unused_variables)]
-pub fn init_user_account(ctx: Context<InitUser>, bound_account: Pubkey) -> Result<()> {
+pub fn init_user_account(ctx: Context<InitUser>, marginfi_account: Pubkey) -> Result<()> {
     let mut user_account = ctx.accounts.user_account.load_init()?;
 
     user_account.key = ctx.accounts.user_account.key();
     user_account.user = ctx.accounts.user.key();
     user_account.bump_seed = ctx.bumps.user_account;
-    user_account.marginfi_account = bound_account;
+    user_account.marginfi_account = marginfi_account;
 
     user_account.last_activity = Clock::get().unwrap().unix_timestamp;
 
@@ -20,7 +20,7 @@ pub fn init_user_account(ctx: Context<InitUser>, bound_account: Pubkey) -> Resul
 
 #[derive(Accounts)]
 #[instruction(
-    bound_account: Pubkey,
+    marginfi_account: Pubkey,
 )]
 pub struct InitUser<'info> {
     /// Pays the init fee
@@ -34,7 +34,7 @@ pub struct InitUser<'info> {
         init,
         seeds = [
             user.key().as_ref(),
-            bound_account.key().as_ref(),
+            marginfi_account.key().as_ref(),
             // Support for nonce use in the future, if multiple user accounts for a single wallet are ever desired.
             &(0 as u8).to_le_bytes(),
             USER_ACCOUNT_SEED.as_bytes()

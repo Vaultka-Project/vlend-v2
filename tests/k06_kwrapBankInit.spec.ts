@@ -76,7 +76,6 @@ describe("Init kwrapped banks", () => {
     assertKeysEqual(bank.group, marginfiGroup.publicKey);
 
     assertKeysEqual(config.oracleKeys[0], usdcOracle);
-    assertKeysEqual(config.oracleKeys[1], usdcReserve);
     assert.equal(bank.bump, bump);
 
     assertBNEqual(bank.flags, 0);

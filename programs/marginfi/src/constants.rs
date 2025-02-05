@@ -19,10 +19,10 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "devnet")] {
         pub const PYTH_ID: Pubkey = pubkey!("gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s");
     } else if #[cfg(any(feature = "mainnet-beta", feature = "staging"))] {
-        pub const PYTH_ID: Pubkey = pubkey!("FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH");
+        pub const PYTH_ID: Pubkey = pubkey!("rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ");
     } else {
         // The key of the mock program on localnet (see its declared id)
-        pub const PYTH_ID: Pubkey = pubkey!("5XaaR94jBubdbrRrNW7DtRvZeWvLhSHkEGU3jHTEXV3C");
+        pub const PYTH_ID: Pubkey = pubkey!("BAjNbaDz4iewFo8q7BwJzRk6LYwYM5DaUk1saKgvX2UM");
     }
 }
 

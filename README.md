@@ -1,3 +1,13 @@
+## About This Project
+
+This project is a fork of [Marginfi](https://github.com/mrgnlabs/marginfi), a decentralized lending protocol on Solana. We have preserved the original program code to ensure that the core functionality remains consistent with the Marginfi protocol.
+
+While maintaining the original program, we have made specific adjustments to parameters, particularly in the Asset and Liability ratio. These modifications are designed to enhance the user experience and tailor the protocol to our specific requirements.
+
+In the interest of transparency, we have retained the original copyright notices and licensing terms as stipulated by the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). All modifications made outside of the program codebase are documented in the commit history.
+
+This project is based on the specific commit [marginfi-program-v1.0.0](https://github.com/Vaultka-Project/vlend-v2/commit/d33e649e415c354cc2a1e3c49131725552d69ba0).
+
 # Marginfi v2
 
 ## Overview

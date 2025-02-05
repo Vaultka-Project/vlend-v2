@@ -14,13 +14,13 @@ use state::marginfi_group::{BankConfigCompact, BankConfigOpt};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "mainnet-beta")] {
-        declare_id!("MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA");
+        declare_id!("V1enDN8GY531jkFp3DWEQiRxwYYsnir8SADjHmkt4RG");
     } else if #[cfg(feature = "devnet")] {
-        declare_id!("neetcne3Ctrrud7vLdt2ypMm21gZHGN2mCmqWaMVcBQ");
+        declare_id!("V1enDN8GY531jkFp3DWEQiRxwYYsnir8SADjHmkt4RG");
     } else if #[cfg(feature = "staging")] {
-        declare_id!("stag8sTKds2h4KzjUw3zKTsxbqvT4XKHdaR9X9E6Rct");
+        declare_id!("V1enDN8GY531jkFp3DWEQiRxwYYsnir8SADjHmkt4RG");
     } else {
-        declare_id!("2jGhuVUuy3umdzByFx8sNWUAaf5vaeuDm78RDPEnhrMr");
+        declare_id!("V1enDN8GY531jkFp3DWEQiRxwYYsnir8SADjHmkt4RG");
     }
 }
 
@@ -220,10 +220,10 @@ pub mod marginfi {
 use solana_security_txt::security_txt;
 #[cfg(not(feature = "no-entrypoint"))]
 security_txt! {
-    name: "marginfi v2",
-    project_url: "https://app.marginfi.com/",
-    contacts: "email:security@mrgn.group",
-    policy: "https://github.com/mrgnlabs/marginfi-v2/blob/main/SECURITY.md",
+    name: "v-lend v2",
+    project_url: "https://solana-v2.vaultka.com/",
+    contacts: "email:info@vaultka.com",
+    policy: "https://github.com/Vaultka-Project/vlend-v2/blob/main/SECURITY.md",
     preferred_languages: "en",
-    source_code: "https://github.com/mrgnlabs/marginfi-v2"
+    source_code: "https://github.com/Vaultka-Project/vlend-v2"
 }

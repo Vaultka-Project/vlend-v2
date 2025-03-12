@@ -4,21 +4,21 @@ import { PublicKey } from "@solana/web3.js";
 
 export interface InterestRateConfigRaw {
   // Curve Params
-  optimalUtilizationRate: WrappedI80F48;
-  plateauInterestRate: WrappedI80F48;
-  maxInterestRate: WrappedI80F48;
+  optimalUtilizationRate: WrappedI80F48 | null;
+  plateauInterestRate: WrappedI80F48 | null;
+  maxInterestRate: WrappedI80F48 | null;
 
   // Fees
-  insuranceFeeFixedApr: WrappedI80F48;
-  insuranceIrFee: WrappedI80F48;
-  protocolFixedFeeApr: WrappedI80F48;
-  protocolIrFee: WrappedI80F48;
+  insuranceFeeFixedApr: WrappedI80F48 | null;
+  insuranceIrFee: WrappedI80F48 | null;
+  protocolFixedFeeApr: WrappedI80F48 | null;
+  protocolIrFee: WrappedI80F48 | null;
 
   // Curve Params
-  startRateAtTarget: WrappedI80F48;
-  minRateAtTarget: WrappedI80F48;
-  adjustmentSpeed: WrappedI80F48;
-  curveSteepness: WrappedI80F48;
+  startRateAtTarget: WrappedI80F48 | null;
+  minRateAtTarget: WrappedI80F48 | null;
+  adjustmentSpeed: WrappedI80F48 | null;
+  curveSteepness: WrappedI80F48 | null;
 }
 
 export interface BankConfigOptRaw {

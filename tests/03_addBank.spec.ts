@@ -154,7 +154,7 @@ describe("Lending pool add bank (add bank to group)", () => {
 
   it("Decodes a mainnet bank configured before manual padding", async () => {
     // mainnet program ID
-    const id = new PublicKey("MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA");
+    const id = new PublicKey("V1enDN8GY531jkFp3DWEQiRxwYYsnir8SADjHmkt4RG");
     const tolerance = 0.000001;
     const group = new PublicKey("4qp6Fx6tnZkY5Wropq9wUYgtFxXKwE6viZxFHg3rdAG8");
 

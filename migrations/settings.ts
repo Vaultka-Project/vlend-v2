@@ -4,35 +4,36 @@ import { ONE_YEAR_IN_SECONDS } from "./constants";
 import { OracleSetup } from "@mrgnlabs/marginfi-client-v2";
 import { BankConfigOptRaw, InterestRateConfigRaw } from "./interfaces";
 import { WrappedI80F48, bigNumberToWrappedI80F48 } from "@mrgnlabs/mrgn-common";
-
-  
+import { createAssociatedTokenAccount } from "@solana/spl-token";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import fs from "fs";
 
 async function main() {
-  let updatedBankConfig = createBankConfigOpt({
-    interestRateConfig: {
-      optimalUtilizationRate: bigNumberToWrappedI80F48(0.8),
-      plateauInterestRate: bigNumberToWrappedI80F48(0.1),
-      maxInterestRate: bigNumberToWrappedI80F48(2),
-      insuranceFeeFixedApr: bigNumberToWrappedI80F48(0),
-      insuranceIrFee: bigNumberToWrappedI80F48(0),
-      protocolFixedFeeApr: bigNumberToWrappedI80F48(0.01),
-      protocolIrFee: bigNumberToWrappedI80F48(0.05),
-      startRateAtTarget: bigNumberToWrappedI80F48(0.04 / ONE_YEAR_IN_SECONDS),
-      minRateAtTarget: bigNumberToWrappedI80F48(0.001 / ONE_YEAR_IN_SECONDS),
-      adjustmentSpeed: bigNumberToWrappedI80F48(50 / ONE_YEAR_IN_SECONDS),
-      curveSteepness: bigNumberToWrappedI80F48(4),
-    },
+  //create a usdc ata for this user: GwkqtKNeVMpT9UWkH5g9gzmVSdu32yYEMWuvs9iH5JWW
+
+  const usdcMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+  const user = new PublicKey("GwkqtKNeVMpT9UWkH5g9gzmVSdu32yYEMWuvs9iH5JWW");
+
+  const connection = new Connection(process.env.SOLANA_RPC_URL, {
+    commitment: "confirmed",
+    confirmTransactionInitialTimeout: 60000, // 60 seconds
+    wsEndpoint: process.env.SOLANA_WS_ENDPOINT,
   });
 
-  for (const bank of [tokenConfigs["JLP"], tokenConfigs["SOL"], tokenConfigs["USDC"]]) {  
-  await configureBank(
-    bank.bankKeypair.publicKey,
-    marginGroupKeyPair.publicKey,
-    adminKeypair,
-    updatedBankConfig,
-      bank.pythFeed
-    );
-  }
+  console.log(connection);
+
+  const adminKeypair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync("keypairs/adminKeypair.json", "utf-8"))));
+
+  let updatedBankConfig = createBankConfigOpt({
+    oracle: {
+      setup: { pythPushOracle: {} },
+      keys: [tokenConfigs["JLP"].oracleKey],
+    },
+  });
+  //
+  // for (const bank of [tokenConfigs["JLP"]]) {
+  //   await configureBank(bank.bankKeypair.publicKey, marginGroupKeyPair.publicKey, adminKeypair, updatedBankConfig, bank.pythFeed);
+  // }
 
   // async function main() {
   //   let updatedBankConfig = createBankConfigOpt({
@@ -40,13 +41,13 @@ async function main() {
   //     liabilityWeightMaint: bigNumberToWrappedI80F48(1.1),
   //   });
 
-  //   await configureBank(
-  //     tokenConfigs["USDT"].bankKeypair.publicKey,
-  //     marginGroupKeyPair.publicKey,
-  //     adminKeypair,
-  //     updatedBankConfig,
-  //     tokenConfigs["USDT"].pythFeed
-  //   );
+  await configureBank(
+    tokenConfigs["JLP"].bankKeypair.publicKey,
+    marginGroupKeyPair.publicKey,
+    adminKeypair,
+    updatedBankConfig,
+    tokenConfigs["JLP"].pythFeed
+  );
   //
   //   await configureBank(
   //     tokenConfigs["USDS"].bankKeypair.publicKey,

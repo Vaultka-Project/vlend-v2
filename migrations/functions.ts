@@ -447,3 +447,11 @@ async function getAdminTokenAccountForBank(bankPubkey: PublicKey): Promise<Publi
 
   return ata;
 }
+
+export async function marginfiGroupConfigure(marginGroupKeyPair: Keypair, admin: Keypair, newAdmin: anchor.web3.PublicKey | null) {
+  await lendingProgram.methods
+    .marginfiGroupConfigure({ admin: newAdmin })
+    .accounts({ marginfiGroup: marginGroupKeyPair.publicKey, admin: admin.publicKey })
+    .signers([admin])
+    .rpc({ commitment: "confirmed" });
+}

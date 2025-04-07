@@ -16,15 +16,15 @@ async function withdrawFeesForBank(bankPubkey: PublicKey) {
   console.log(`- Fee vault balance: ${feeVaultBalance}`);
   console.log(`- Insurance vault balance: ${insuranceVaultBalance}`);
 
-  if (feeVaultBalance > 0) {
-    console.log(`Withdrawing ${feeVaultBalance} from fee vault...`);
-    await withdrawProtocolFees(bankPubkey, MARGINFI_GROUP_PK, feeVaultBalance);
-  }
-
-  if (insuranceVaultBalance > 0) {
-    console.log(`Withdrawing ${insuranceVaultBalance} from insurance vault...`);
-    await withdrawInsuranceFees(bankPubkey, MARGINFI_GROUP_PK, insuranceVaultBalance);
-  }
+  //   if (feeVaultBalance > 0) {
+  //     console.log(`Withdrawing ${feeVaultBalance} from fee vault...`);
+  //     await withdrawProtocolFees(bankPubkey, MARGINFI_GROUP_PK, feeVaultBalance);
+  //   }
+  //
+  //   if (insuranceVaultBalance > 0) {
+  //     console.log(`Withdrawing ${insuranceVaultBalance} from insurance vault...`);
+  //     await withdrawInsuranceFees(bankPubkey, MARGINFI_GROUP_PK, insuranceVaultBalance);
+  //   }
 }
 
 async function main() {
@@ -33,7 +33,8 @@ async function main() {
 
   for (const bankPubkey of bankPubkeys) {
     try {
-      await withdrawFeesForBank(bankPubkey);
+      // await withdrawFeesForBank(bankPubkey);
+      console.log(await getBankVaultBalances(bankPubkey));
       console.log(`Successfully processed bank ${bankPubkey.toString()}\n`);
     } catch (error) {
       console.error(`Error processing bank ${bankPubkey.toString()}:`, error);

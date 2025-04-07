@@ -134,7 +134,7 @@ function calculateTokenBalance(shares: string, shareValue: string, decimals: num
  * @param userAddress The public key of the user
  * @returns Object containing the user's marginfi account information
  */
-export async function fetchUserMarginfiAccount(userAddress: string = "73yaUC1fzgDJTjLVz6ChiUjSbqjULNZwdtZJdkjTro6w") {
+export async function fetchUserMarginfiAccount(userAddress: string = "2uhuQvAcvtwwa4Nfb4gAhCdSKam1bruk82rnr8uVYi58") {
   // Load the admin keypair
   const adminKeypair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync("keypairs/adminKeypair.json", "utf-8"))));
 

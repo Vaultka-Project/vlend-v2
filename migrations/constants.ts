@@ -16,7 +16,7 @@ export const BANK_PKS = {
   USDT: new PublicKey("usDtKQc4cLwXysoWMLSewi459DwRcZcKXFs48bhb98B"),
   PYUSD: new PublicKey("PYUsQv22izmRYsGT1HLRxF3DLhMHNA1VzNBcqDtjUoR"),
   JUP_SOL: new PublicKey("juPSSmsK7tai8uRQoUhNaVQi2dHSnUg6uAKkAYyq7id"),
-  S_SOL: new PublicKey("sso1ujDVWMXjVEnBNBaWpPUFvf9Hvx5WjuVxw15S8yf")
+  S_SOL: new PublicKey("sso1ujDVWMXjVEnBNBaWpPUFvf9Hvx5WjuVxw15S8yf"),
 } as const;
 
 // Bank Names for UI/Display
@@ -29,7 +29,7 @@ export const BANK_NAMES = {
   [BANK_PKS.USDT.toString()]: "USDT",
   [BANK_PKS.PYUSD.toString()]: "PYUSD",
   [BANK_PKS.JUP_SOL.toString()]: "JupSOL",
-  [BANK_PKS.S_SOL.toString()]: "sSOL"
+  [BANK_PKS.S_SOL.toString()]: "sSOL",
 } as const;
 
 // Utility function to get bank name from public key

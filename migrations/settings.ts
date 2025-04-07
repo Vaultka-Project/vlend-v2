@@ -1,4 +1,4 @@
-import { initializeGroup, addBankWithConfig, configureBank, createBankConfigOpt } from "./functions";
+import { initializeGroup, addBankWithConfig, configureBank, createBankConfigOpt, marginfiGroupConfigure } from "./functions";
 import { marginGroupKeyPair, adminKeypair, tokenConfigs } from "./config";
 import { ONE_YEAR_IN_SECONDS } from "./constants";
 import { OracleSetup } from "@mrgnlabs/marginfi-client-v2";
@@ -20,20 +20,17 @@ async function main() {
     wsEndpoint: process.env.SOLANA_WS_ENDPOINT,
   });
 
-  console.log(connection);
-
-  const adminKeypair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync("keypairs/adminKeypair.json", "utf-8"))));
-
-  let updatedBankConfig = createBankConfigOpt({
-    oracle: {
-      setup: { pythPushOracle: {} },
-      keys: [tokenConfigs["JLP"].oracleKey],
-    },
-  });
   //
-  // for (const bank of [tokenConfigs["JLP"]]) {
-  //   await configureBank(bank.bankKeypair.publicKey, marginGroupKeyPair.publicKey, adminKeypair, updatedBankConfig, bank.pythFeed);
-  // }
+  let updatedBankConfig = createBankConfigOpt({
+    assetWeightInit: bigNumberToWrappedI80F48(0.9),
+    assetWeightMaint: bigNumberToWrappedI80F48(0.95),
+    liabilityWeightInit: bigNumberToWrappedI80F48(1.23),
+    liabilityWeightMaint: bigNumberToWrappedI80F48(1.1),
+  });
+  //   //
+  for (const bank of [tokenConfigs["JLP"]]) {
+    await configureBank(bank.bankKeypair.publicKey, marginGroupKeyPair.publicKey, adminKeypair, updatedBankConfig, bank.pythFeed);
+  }
 
   // async function main() {
   //   let updatedBankConfig = createBankConfigOpt({
@@ -41,13 +38,6 @@ async function main() {
   //     liabilityWeightMaint: bigNumberToWrappedI80F48(1.1),
   //   });
 
-  await configureBank(
-    tokenConfigs["JLP"].bankKeypair.publicKey,
-    marginGroupKeyPair.publicKey,
-    adminKeypair,
-    updatedBankConfig,
-    tokenConfigs["JLP"].pythFeed
-  );
   //
   //   await configureBank(
   //     tokenConfigs["USDS"].bankKeypair.publicKey,
